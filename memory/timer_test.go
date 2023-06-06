@@ -5,16 +5,8 @@ import (
 	"time"
 
 	"github.com/spirozh/timr"
-	"github.com/stretchr/testify/assert"
+	"github.com/spirozh/timr/test"
 )
-
-type timerRemainingTestCase struct {
-	label string
-	rem   time.Duration
-	dur   time.Duration
-	st    *time.Time
-	segs  []time.Duration
-}
 
 var now time.Time = time.Now()
 
@@ -23,49 +15,53 @@ func Now() time.Time {
 }
 
 func TestTimerRemaining(t *testing.T) {
+	type testCase struct {
+		label     string
+		remaining time.Duration
+		expired   bool
+		duration  time.Duration
+		start     *time.Time
+		segments  []time.Duration
+	}
 
-	tcs := []timerRemainingTestCase{}
+	var t0 time.Time
 
-	tc := func(label string, remaining, duration time.Duration, start *time.Time, elapsedSegments []time.Duration) {
-		tcs = append(tcs, timerRemainingTestCase{label, remaining, duration, start, elapsedSegments})
+	tc := func(label string, remaining time.Duration, expired bool, duration time.Duration, start *time.Time, elapsedSegments []time.Duration) {
+		t.Helper()
+		testTimer := timer{duration, start, elapsedSegments}
+
+		format := "Test Case: '%s'"
+
+		test.Equal(t, remaining, testTimer.remaining(t0), format, label)
+		test.Equal(t, expired, testTimer.expired(t0), format, label)
 	}
 
 	noElapsedSegments := []time.Duration{}
-	tc("dur 0m, not started, 0 segs", 0, 0, nil, noElapsedSegments)
+	tc("dur 0m, not started, 0 segments", 0, false, 0, nil, noElapsedSegments)
 
-	t0 := time.Now()
-	tc("dur 0m, started t0, 0 segs ", 0, 0, &t0, noElapsedSegments)
+	t0 = time.Now()
+	tc("dur 0m, started t0, 0 segments", 0, false, 0, &t0, noElapsedSegments)
 
 	tMinus1 := t0.Add(-time.Minute)
-	tc("dur 0m, 1 min ago, 0 segs  ", -time.Minute, 0, &tMinus1, noElapsedSegments)
+	tc("dur 0m, 1 min ago, 0 segments", -time.Minute, true, 0, &tMinus1, noElapsedSegments)
 
-	tc("dur 4m, started now, 0 segs", 4*time.Minute, 4*time.Minute, &t0, noElapsedSegments)
-	tc("dur 4m, not running, 0 segs", 4*time.Minute, 4*time.Minute, nil, noElapsedSegments)
-	tc("dur 4m, 1 min ago, 0 segs  ", 3*time.Minute, 4*time.Minute, &tMinus1, noElapsedSegments)
+	tc("dur 4m, started now, 0 segments", 4*time.Minute, false, 4*time.Minute, &t0, noElapsedSegments)
+	tc("dur 4m, not running, 0 segments", 4*time.Minute, false, 4*time.Minute, nil, noElapsedSegments)
+	tc("dur 4m, 1 min ago, 0 segments", 3*time.Minute, false, 4*time.Minute, &tMinus1, noElapsedSegments)
 
 	oneElapsedSegment := []time.Duration{time.Minute}
-	tc("dur 0m, not running, 1 seg", -time.Minute, 0, nil, oneElapsedSegment)
-	tc("dur 0m, 1 min ago, 1 seg  ", -2*time.Minute, 0, &tMinus1, oneElapsedSegment)
+	tc("dur 0m, not running, 1 segment", -time.Minute, false, 0, nil, oneElapsedSegment)
+	tc("dur 0m, 1 min ago, 1 segment", -2*time.Minute, false, 0, &tMinus1, oneElapsedSegment)
 
-	tc("dur 4m, not running, 1 seg", 3*time.Minute, 4*time.Minute, nil, oneElapsedSegment)
-	tc("dur 4m, 1 min ago, 1 seg  ", 2*time.Minute, 4*time.Minute, &tMinus1, oneElapsedSegment)
+	tc("dur 4m, not running, 1 segment", 3*time.Minute, false, 4*time.Minute, nil, oneElapsedSegment)
+	tc("dur 4m, 1 min ago, 1 segment", 2*time.Minute, false, 4*time.Minute, &tMinus1, oneElapsedSegment)
 
-	tc("dur 4m, 1 min ago, 3 seg", 0, 4*time.Minute, &tMinus1, []time.Duration{2 * time.Minute, 30 * time.Second, 30 * time.Second})
-
-	for _, tc := range tcs {
-		testTimer := timer{tc.dur, tc.st, tc.segs}
-
-		remaining := testTimer.remaining(t0)
-		assert.Equal(t, tc.rem, remaining, "remaining: %s: %s", tc.label, testTimer)
-
-		expired := testTimer.expired(t0)
-		assert.Equal(t, tc.rem < 0, expired, "expired: %s: %s", tc.label, testTimer)
-	}
+	tc("dur 4m, 1 min ago, 3 segments", 0, false, 4*time.Minute, &tMinus1, []time.Duration{2 * time.Minute, 30 * time.Second, 30 * time.Second})
 }
 
 func TestTimerService(t *testing.T) {
 	s := TimerService(Now)
-	assert.NotNil(t, s)
+	test.NotEqual(t, s, nil, "TimerService(time.Time) should not return nil")
 }
 
 func TestTimerServiceNoSuchTimerError(t *testing.T) {
@@ -73,33 +69,24 @@ func TestTimerServiceNoSuchTimerError(t *testing.T) {
 	s := TimerService(Now)
 
 	// no such timer errors
-	err = s.Toggle("x")
-	assert.ErrorIs(t, err, timr.ErrNoSuchTimer)
-
-	err = s.Reset("x")
-	assert.ErrorIs(t, err, timr.ErrNoSuchTimer)
+	test.Equal(t, timr.ErrNoSuchTimer, s.Toggle("x"))
+	test.Equal(t, timr.ErrNoSuchTimer, s.Reset("x"))
 
 	_, _, err = s.Remaining("x")
-	assert.ErrorIs(t, err, timr.ErrNoSuchTimer)
+	test.Equal(t, timr.ErrNoSuchTimer, err)
 
-	err = s.Remove("x")
-	assert.ErrorIs(t, err, timr.ErrNoSuchTimer)
-
-	// create timer
-	_ = s.Create("x", time.Minute)
+	test.Equal(t, timr.ErrNoSuchTimer, s.Remove("x"))
 
 	// when timer is exists there are no errors
-	err = s.Toggle("x")
-	assert.NoError(t, err)
+	_ = s.Create("x", time.Minute)
 
-	err = s.Reset("x")
-	assert.NoError(t, err)
+	test.Equal(t, nil, s.Toggle("x"))
+	test.Equal(t, nil, s.Reset("x"))
 
 	_, _, err = s.Remaining("x")
-	assert.NoError(t, err)
+	test.Equal(t, nil, err)
 
-	err = s.Remove("x")
-	assert.NoError(t, err)
+	test.Equal(t, nil, s.Remove("x"))
 }
 
 func TestTimerServiceCreateRunningTimerError(t *testing.T) {
@@ -107,50 +94,46 @@ func TestTimerServiceCreateRunningTimerError(t *testing.T) {
 
 	s := TimerService(Now)
 
-	// create timer
-	err = s.Create("x", time.Minute)
-	assert.NoError(t, err)
-
+	// create timer and start it
+	test.Equal(t, nil, s.Create("x", time.Minute))
 	s.Toggle("x")
 
 	// recreating existing timer which is running and not yet expired fails
-	err = s.Create("x", time.Minute)
-	assert.ErrorIs(t, err, timr.ErrTimerRunning)
+	test.Equal(t, timr.ErrTimerRunning, s.Create("x", time.Minute))
 
 	// remaining time of zero is still not expired
 	now = now.Add(time.Minute)
-	err = s.Create("x", time.Minute)
-	assert.ErrorIs(t, err, timr.ErrTimerRunning)
+	test.Equal(t, timr.ErrTimerRunning, s.Create("x", time.Minute))
 
 	// recreating existing timer which is running but expired succeeds
 	now = now.Add(time.Nanosecond)
 	err = s.Create("x", time.Minute)
-	assert.NoError(t, err)
+	test.Equal(t, nil, err)
 
 	// recreating existing timer which is not running and not yet expired succeeds
 	s.Create("x", time.Minute)
 	err = s.Create("x", time.Minute)
-	assert.NoError(t, err)
+	test.Equal(t, nil, err)
 }
 
 func TestTimerServiceListAndRemove(t *testing.T) {
 
 	s := TimerService(Now)
 
-	assert.ElementsMatch(t, []string{}, s.List())
+	test.ElementsMatch(t, []string{}, s.List())
 
 	names := []string{"a", "b", "c"}
 	for _, name := range names {
 		s.Create(name, 0)
 	}
 
-	assert.ElementsMatch(t, names, s.List())
+	test.ElementsMatch(t, names, s.List())
 
 	for _, name := range names {
 		s.Remove(name)
 	}
 
-	assert.ElementsMatch(t, []string{}, s.List())
+	test.ElementsMatch(t, []string{}, s.List())
 }
 
 func TestTimerServiceRemaining(t *testing.T) {
