@@ -1,0 +1,11 @@
+<!-- layout.html -->
+<html>
+    <body>
+        <div class="navbar">...</div>
+        <div class="content">
+            {{block "content" .}}
+                <!-- Fallback, if "content" is not defined elsewhere -->
+            {{end}}
+        </div>
+    </body>
+</html>
