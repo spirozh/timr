@@ -25,7 +25,7 @@ const (
 type EventSubscription struct {
 }
 
-type XXX interface {
+type Subscribable interface {
 	Subscribe(selector string, callback func(timerName string, eventType ServiceEventType)) *EventSubscription
 	Unsubscribe(*EventSubscription) error
 }
