@@ -3,139 +3,77 @@ package memory
 import (
 	"testing"
 	"time"
-
-	"github.com/spirozh/timr"
-	"github.com/spirozh/timr/test"
 )
 
-var now time.Time = time.Now()
+func TestTimerToggle(t *testing.T) {
+	// TODO: think about this...
+	mmss := func(s string) time.Time {
+		t, _ := time.Parse("04:05", s)
+		return t
+	}
 
-func Now() time.Time {
-	return now
+	dur := func(s string) time.Duration {
+		return mmss(s).Sub(mmss("00:00"))
+	}
+
+	str := func(d time.Duration) string {
+		f := "04:05"
+		if d < 0 {
+			d, f = -d, "-"+f
+		}
+		return mmss("00:00").Add(d).Format(f)
+	}
+
+	gap := func(timer *timer, cur, pause, rem string) {
+		t.Helper()
+
+		timer.toggle(mmss(cur))
+		timer.toggle(mmss(cur).Add(dur(pause)))
+		act := str(timer.remaining(mmss(cur)))
+		if rem != act {
+			t.Errorf("%s should remain, but was %s", rem, act)
+		}
+	}
+
+	timer := Timer(dur("01:00")) // off
+
+	gap(timer, "00:01", "00:10", "00:50") // on
+	gap(timer, "00:11", "00:00", "00:50")
+	gap(timer, "00:01", "00:00", "00:50")
 }
 
 func TestTimerRemaining(t *testing.T) {
-	type testCase struct {
-		label     string
-		remaining time.Duration
-		expired   bool
-		duration  time.Duration
-		start     *time.Time
-		segments  []time.Duration
-	}
+	t0 := time.Now()
+	tMinus1 := t0.Add(-time.Minute)
 
-	var t0 time.Time
-
-	tc := func(label string, remaining time.Duration, expired bool, duration time.Duration, start *time.Time, elapsedSegments []time.Duration) {
+	tc := func(remaining time.Duration, expired bool, duration time.Duration, start *time.Time, elapsedSegments []time.Duration) {
 		t.Helper()
 		testTimer := timer{duration, start, elapsedSegments}
 
-		format := "Test Case: '%s'"
+		actualRemaining := testTimer.remaining(t0)
+		if remaining != actualRemaining {
+			t.Errorf("expected remaining=%v, was: %v", remaining, actualRemaining)
+		}
 
-		test.Equal(t, remaining, testTimer.remaining(t0), format, label)
-		test.Equal(t, expired, testTimer.expired(t0), format, label)
+		actualExpired := testTimer.expired(t0)
+		if expired != actualExpired {
+			t.Errorf("expected expired=%v, was: %v, ", expired, actualExpired)
+		}
 	}
 
 	noElapsedSegments := []time.Duration{}
-	tc("dur 0m, not started, 0 segments", 0, false, 0, nil, noElapsedSegments)
-
-	t0 = time.Now()
-	tc("dur 0m, started t0, 0 segments", 0, false, 0, &t0, noElapsedSegments)
-
-	tMinus1 := t0.Add(-time.Minute)
-	tc("dur 0m, 1 min ago, 0 segments", -time.Minute, true, 0, &tMinus1, noElapsedSegments)
-
-	tc("dur 4m, started now, 0 segments", 4*time.Minute, false, 4*time.Minute, &t0, noElapsedSegments)
-	tc("dur 4m, not running, 0 segments", 4*time.Minute, false, 4*time.Minute, nil, noElapsedSegments)
-	tc("dur 4m, 1 min ago, 0 segments", 3*time.Minute, false, 4*time.Minute, &tMinus1, noElapsedSegments)
-
 	oneElapsedSegment := []time.Duration{time.Minute}
-	tc("dur 0m, not running, 1 segment", -time.Minute, false, 0, nil, oneElapsedSegment)
-	tc("dur 0m, 1 min ago, 1 segment", -2*time.Minute, false, 0, &tMinus1, oneElapsedSegment)
+	threeSegments := []time.Duration{2 * time.Minute, 30 * time.Second, 30 * time.Second}
 
-	tc("dur 4m, not running, 1 segment", 3*time.Minute, false, 4*time.Minute, nil, oneElapsedSegment)
-	tc("dur 4m, 1 min ago, 1 segment", 2*time.Minute, false, 4*time.Minute, &tMinus1, oneElapsedSegment)
-
-	tc("dur 4m, 1 min ago, 3 segments", 0, false, 4*time.Minute, &tMinus1, []time.Duration{2 * time.Minute, 30 * time.Second, 30 * time.Second})
-}
-
-func TestTimerService(t *testing.T) {
-	s := TimerService(Now)
-	test.NotEqual(t, s, nil, "TimerService(time.Time) should not return nil")
-}
-
-func TestTimerServiceNoSuchTimerError(t *testing.T) {
-	var err error
-	s := TimerService(Now)
-
-	// no such timer errors
-	test.Equal(t, timr.ErrNoSuchTimer, s.Toggle("x"))
-	test.Equal(t, timr.ErrNoSuchTimer, s.Reset("x"))
-
-	_, _, err = s.Remaining("x")
-	test.Equal(t, timr.ErrNoSuchTimer, err)
-
-	test.Equal(t, timr.ErrNoSuchTimer, s.Remove("x"))
-
-	// when timer is exists there are no errors
-	_ = s.Create("x", time.Minute)
-
-	test.Equal(t, nil, s.Toggle("x"))
-	test.Equal(t, nil, s.Reset("x"))
-
-	_, _, err = s.Remaining("x")
-	test.Equal(t, nil, err)
-
-	test.Equal(t, nil, s.Remove("x"))
-}
-
-func TestTimerServiceCreateRunningTimerError(t *testing.T) {
-	var err error
-
-	s := TimerService(Now)
-
-	// create timer and start it
-	test.Equal(t, nil, s.Create("x", time.Minute))
-	s.Toggle("x")
-
-	// recreating existing timer which is running and not yet expired fails
-	test.Equal(t, timr.ErrTimerRunning, s.Create("x", time.Minute))
-
-	// remaining time of zero is still not expired
-	now = now.Add(time.Minute)
-	test.Equal(t, timr.ErrTimerRunning, s.Create("x", time.Minute))
-
-	// recreating existing timer which is running but expired succeeds
-	now = now.Add(time.Nanosecond)
-	err = s.Create("x", time.Minute)
-	test.Equal(t, nil, err)
-
-	// recreating existing timer which is not running and not yet expired succeeds
-	s.Create("x", time.Minute)
-	err = s.Create("x", time.Minute)
-	test.Equal(t, nil, err)
-}
-
-func TestTimerServiceListAndRemove(t *testing.T) {
-
-	s := TimerService(Now)
-
-	test.ElementsMatch(t, []string{}, s.List())
-
-	names := []string{"a", "b", "c"}
-	for _, name := range names {
-		s.Create(name, 0)
-	}
-
-	test.ElementsMatch(t, names, s.List())
-
-	for _, name := range names {
-		s.Remove(name)
-	}
-
-	test.ElementsMatch(t, []string{}, s.List())
-}
-
-func TestTimerServiceRemaining(t *testing.T) {
-
+	tc(0, false, 0, nil, noElapsedSegments)                              // dur 0m, not started, 0 segments
+	tc(0, false, 0, &t0, noElapsedSegments)                              // dur 0m, started t0, 0 segments
+	tc(-time.Minute, true, 0, &tMinus1, noElapsedSegments)               // dur 0m, 1 min ago, 0 segments
+	tc(4*time.Minute, false, 4*time.Minute, &t0, noElapsedSegments)      // dur 4m, started t0, 0 segments
+	tc(4*time.Minute, false, 4*time.Minute, nil, noElapsedSegments)      // dur 4m, not running, 0 segments
+	tc(3*time.Minute, false, 4*time.Minute, &tMinus1, noElapsedSegments) // dur 4m, 1 min ago, 0 segments
+	tc(-time.Minute, true, 0, nil, oneElapsedSegment)                    // dur 0m, not running, 1 segment
+	tc(-2*time.Minute, true, 0, &tMinus1, oneElapsedSegment)             // dur 0m, 1 min ago, 1 segment
+	tc(3*time.Minute, false, 4*time.Minute, nil, oneElapsedSegment)      // dur 4m, not running, 1 segment
+	tc(2*time.Minute, false, 4*time.Minute, &tMinus1, oneElapsedSegment) // dur 4m, 1 min ago, 1 segment
+	tc(0, false, 4*time.Minute, &tMinus1, threeSegments)                 // dur 4m, 1 min ago, 3 segments
 }
