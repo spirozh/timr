@@ -1,10 +1,9 @@
-package memory
+package timer
 
 import (
 	"time"
 
 	"github.com/spirozh/timr"
-	"github.com/spirozh/timr/timer"
 	"golang.org/x/exp/slices"
 )
 
@@ -20,10 +19,15 @@ var _ timr.Subscribable = (*timerService)(nil)
 func TimerService(clock func() time.Time) timr.TimerService {
 	return &timerService{
 		clock:  clock,
-		timers: map[string]timr.Timer{},
+		timers: restore(),
 
 		subscribers: []*timr.EventSubscription{},
 	}
+}
+
+func save(map[string]timr.Timer) {}
+func restore() map[string]timr.Timer {
+	return map[string]timr.Timer{}
 }
 
 func (s *timerService) Subscribe(callback timr.EventCallback) *timr.EventSubscription {
@@ -44,10 +48,12 @@ func (s *timerService) Unsubscribe(sub *timr.EventSubscription) {
 	s.subscribers = s.subscribers[:len(s.subscribers)-1]
 }
 
-func (s *timerService) notify(t timr.ServiceEventType, name string) {
+func (s *timerService) notifyAndSave(t timr.ServiceEventType, name string) {
 	for _, sub := range s.subscribers {
-		sub.Callback(t, name)
+		go sub.Callback(t, name)
 	}
+
+	save(s.timers)
 }
 
 func (s *timerService) getTimer(name string) (timr.Timer, error) {
@@ -65,9 +71,9 @@ func (s *timerService) Create(name string, duration time.Duration) error {
 		return timr.ErrTimerExists
 	}
 
-	s.timers[name] = timer.Timer(duration)
+	s.timers[name] = Timer(duration)
 
-	s.notify(timr.EventTimerCreated, name)
+	s.notifyAndSave(timr.EventTimerCreated, name)
 	return nil
 }
 
@@ -89,7 +95,7 @@ func (s *timerService) Pause(name string) error {
 
 	timer.Pause(s.clock())
 
-	s.notify(timr.EventTimerPaused, name)
+	s.notifyAndSave(timr.EventTimerPaused, name)
 	return nil
 }
 
@@ -101,7 +107,7 @@ func (s *timerService) Resume(name string) error {
 
 	timer.Resume(s.clock())
 
-	s.notify(timr.EventTimerResumed, name)
+	s.notifyAndSave(timr.EventTimerResumed, name)
 	return nil
 }
 
@@ -113,7 +119,7 @@ func (s *timerService) Reset(name string) error {
 
 	timer.Reset()
 
-	s.notify(timr.EventTimerReset, name)
+	s.notifyAndSave(timr.EventTimerReset, name)
 	return nil
 }
 
@@ -135,6 +141,6 @@ func (s *timerService) Remove(name string) error {
 
 	delete(s.timers, name)
 
-	s.notify(timr.EventTimerRemoved, name)
+	s.notifyAndSave(timr.EventTimerRemoved, name)
 	return nil
 }
