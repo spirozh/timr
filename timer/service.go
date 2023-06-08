@@ -44,19 +44,10 @@ func (ts *timerService) Unsubscribe(sub *timr.EventSubscription) {
 	ts.subscribers = ts.subscribers[:len(ts.subscribers)-1]
 }
 
-func (ts *timerService) notify(t timr.ServiceEventType, name string, timer timr.Timer) {
+func (ts *timerService) notify(t timr.TimrEventType, name string, timer timr.Timer) {
 	for _, sub := range ts.subscribers {
 		sub.Callback(t, name, timer)
 	}
-}
-
-func (ts *timerService) getTimer(name string) (timr.Timer, error) {
-	timer, ok := ts.timers[name]
-	if ok {
-		return timer, nil
-	}
-
-	return nil, timr.ErrNoSuchTimer
 }
 
 func (ts *timerService) Create(name string, duration time.Duration) error {
@@ -65,10 +56,35 @@ func (ts *timerService) Create(name string, duration time.Duration) error {
 		return timr.ErrTimerExists
 	}
 
-	t := Timer(duration)
+	notify := func(e timr.TimrEventType, t timr.Timer) {
+		ts.notify(e, name, t)
+	}
+
+	t := &timer{ts.clock, notify, duration, nil, 0}
 	ts.timers[name] = t
 
 	ts.notify(timr.EventTimerCreated, name, t)
+	return nil
+}
+
+func (ts *timerService) Get(name string) (timr.Timer, error) {
+	timer, ok := ts.timers[name]
+	if ok {
+		return timer, nil
+	}
+
+	return nil, timr.ErrNoSuchTimer
+}
+
+func (ts *timerService) Remove(name string) error {
+	t, err := ts.Get(name)
+	if err != nil {
+		return err
+	}
+
+	delete(ts.timers, name)
+
+	ts.notify(timr.EventTimerRemoved, name, t)
 	return nil
 }
 
@@ -80,62 +96,4 @@ func (ts *timerService) List() []string {
 	}
 
 	return names
-}
-
-func (ts *timerService) Pause(name string) error {
-	timer, err := ts.getTimer(name)
-	if err != nil {
-		return err
-	}
-
-	timer.Pause(ts.clock())
-
-	ts.notify(timr.EventTimerPaused, name, timer)
-	return nil
-}
-
-func (ts *timerService) Resume(name string) error {
-	timer, err := ts.getTimer(name)
-	if err != nil {
-		return err
-	}
-
-	timer.Resume(ts.clock())
-
-	ts.notify(timr.EventTimerResumed, name, timer)
-	return nil
-}
-
-func (ts *timerService) Reset(name string) error {
-	timer, err := ts.getTimer(name)
-	if err != nil {
-		return err
-	}
-
-	timer.Reset()
-
-	ts.notify(timr.EventTimerReset, name, timer)
-	return nil
-}
-
-func (ts *timerService) Remaining(name string) (remaining time.Duration, isPaused bool, err error) {
-	timer, err := ts.getTimer(name)
-	if err != nil {
-		return 0, false, err
-	}
-
-	remaining, paused := timer.Remaining(ts.clock())
-	return remaining, paused, nil
-}
-
-func (ts *timerService) Remove(name string) error {
-	_, err := ts.getTimer(name)
-	if err != nil {
-		return err
-	}
-
-	delete(ts.timers, name)
-
-	ts.notify(timr.EventTimerRemoved, name, nil)
-	return nil
 }

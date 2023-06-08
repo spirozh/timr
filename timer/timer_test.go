@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spirozh/timr"
 	"github.com/spirozh/timr/test"
 )
 
@@ -27,32 +28,35 @@ func TestTimerPauseResume(t *testing.T) {
 	}
 
 	now := time.Now()
-	timer := Timer(dur("01:00")) // off
+	clock := func() time.Time { return now }
+	notify := func(timr.TimrEventType, timr.Timer) {}
+	timer := &timer{clock, notify, dur("01:00"), nil, 0}
 
 	advance := func(s string) {
 		now = now.Add(dur(s))
 	}
+
 	shouldRemain := func(s string) {
 		t.Helper()
-		remaining, _ := timer.Remaining(now)
+		remaining, _ := timer.Remaining()
 		if str(remaining) != s {
 			t.Errorf("time remaining should be: %#v, was: %#v", s, str(remaining))
 		}
 	}
 
-	timer.Resume(now)
+	timer.Resume()
 	advance("00:05")
-	timer.Pause(now)
+	timer.Pause()
 	shouldRemain("00:55")
 	advance("00:05")
 	shouldRemain("00:55")
-	timer.Resume(now)
+	timer.Resume()
 	advance("00:55")
 	shouldRemain("00:00")
-	timer.Pause(now)
+	timer.Pause()
 	advance("01:00")
 	shouldRemain("00:00")
-	timer.Resume(now)
+	timer.Resume()
 	advance("01:00")
 	shouldRemain("-01:00")
 
@@ -64,9 +68,11 @@ func TestTimerRemaining(t *testing.T) {
 
 	tc := func(remaining time.Duration, duration time.Duration, start *time.Time, elapsedTime time.Duration) {
 		t.Helper()
-		testTimer := timer{duration, start, elapsedTime}
+		now := func() time.Time { return t0 }
+		notify := func(e timr.TimrEventType, thisTimer timr.Timer) {}
+		testTimer := timer{now, notify, duration, start, elapsedTime}
 
-		actualRemaining, isRunning := testTimer.Remaining(t0)
+		actualRemaining, isRunning := testTimer.Remaining()
 		test.Equal(t, remaining, actualRemaining)
 		test.Equal(t, start != nil, isRunning)
 	}

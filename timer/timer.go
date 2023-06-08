@@ -7,6 +7,9 @@ import (
 )
 
 type timer struct {
+	now    func() time.Time
+	notify func(timr.TimrEventType, timr.Timer)
+
 	duration time.Duration
 	start    *time.Time
 	elapsed  time.Duration
@@ -14,33 +17,36 @@ type timer struct {
 
 var _ timr.Timer = (*timer)(nil)
 
-func Timer(d time.Duration) *timer {
-	return &timer{d, nil, 0}
-}
-
-func (t *timer) Resume(now time.Time) {
+func (t *timer) Resume() {
 	if t.start == nil {
+		now := t.now()
 		t.start = &now
 	}
+
+	t.notify(timr.EventTimerResumed, t)
 }
 
-func (t *timer) Pause(now time.Time) {
+func (t *timer) Pause() {
 	if t.start != nil {
-		t.elapsed += now.Sub(*t.start)
+		t.elapsed += t.now().Sub(*t.start)
 		t.start = nil
 	}
+
+	t.notify(timr.EventTimerPaused, t)
 }
 
 func (t *timer) Reset() {
 	t.start, t.elapsed = nil, 0
+
+	t.notify(timr.EventTimerReset, t)
 }
 
-func (t *timer) Remaining(now time.Time) (remaining time.Duration, isRunning bool) {
+func (t *timer) Remaining() (remaining time.Duration, isRunning bool) {
 	remaining = t.duration - t.elapsed
 
 	if t.start == nil {
 		return remaining, false
 	}
 
-	return remaining - now.Sub(*t.start), true
+	return remaining - t.now().Sub(*t.start), true
 }
