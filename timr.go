@@ -5,46 +5,43 @@ import (
 )
 
 type Timer interface {
-	Pause(time.Time)
-	Resume(time.Time)
+	Remaining() (remaining time.Duration, isPaused bool)
+	Pause()
+	Resume()
 	Reset()
-	Remaining(time.Time) (remaining time.Duration, isPaused bool)
 }
 
 type TimerService interface {
 	Create(name string, duration time.Duration) error
 	List() []string
-	Pause(name string) error
-	Resume(name string) error
-	Reset(name string) error
-	Remaining(name string) (remaining time.Duration, isPaused bool, err error)
+	Get(name string) (Timer, error)
 	Remove(name string) error
 }
 
-type ServiceEventType int
+type TimrEventType int
 
 const (
-	_ ServiceEventType = iota
+	_ TimrEventType = iota
 	EventTimerCreated
 	EventTimerPaused
 	EventTimerResumed
 	EventTimerReset
 	EventTimerRemoved
 
-	serviceEventNames string = "UnknownCreatedPausedResumedResetRemoved"
+	timrEventNames string = "UnknownCreatedPausedResumedResetRemoved"
 )
 
-var serviceEventNameOffsets = [...]int{0, 7, 14, 20, 27, 32, 39}
+var timrEventNameOffsets = [...]int{0, 7, 14, 20, 27, 32, 39}
 
-func (t ServiceEventType) String() string {
-	return serviceEventNames[serviceEventNameOffsets[t]:serviceEventNameOffsets[t+1]]
+func (t TimrEventType) String() string {
+	return timrEventNames[timrEventNameOffsets[t]:timrEventNameOffsets[t+1]]
 }
 
 type EventSubscription struct {
 	Callback EventCallback
 }
 
-type EventCallback func(eventType ServiceEventType, name string, timer Timer)
+type EventCallback func(eventType TimrEventType, name string, timer Timer)
 
 type Subscribable interface {
 	Subscribe(callback EventCallback) *EventSubscription
@@ -58,5 +55,7 @@ func (e timrError) Error() string {
 	return string(e)
 }
 
-const ErrTimerExists timrError = "Timer Exists"
-const ErrNoSuchTimer timrError = "No Such Timer"
+const (
+	ErrTimerExists timrError = "Timer Exists"
+	ErrNoSuchTimer timrError = "No Such Timer"
+)
