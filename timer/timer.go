@@ -19,10 +19,13 @@ var _ timr.Timer = (*timer)(nil)
 
 func (t *timer) Resume() {
 	if t.start == nil {
-		*t.start = t.clock()
+		now := t.clock()
+		t.start = &now
 	}
 
-	t.notify(timr.EventTimerResumed, t)
+	if t.notify != nil {
+		t.notify(timr.EventTimerResumed, t)
+	}
 }
 
 func (t *timer) Pause() {
@@ -31,7 +34,9 @@ func (t *timer) Pause() {
 		t.start = nil
 	}
 
-	t.notify(timr.EventTimerPaused, t)
+	if t.notify != nil {
+		t.notify(timr.EventTimerPaused, t)
+	}
 }
 
 func (t *timer) Reset() {
@@ -40,7 +45,9 @@ func (t *timer) Reset() {
 		*t.start = t.clock()
 	}
 
-	t.notify(timr.EventTimerReset, t)
+	if t.notify != nil {
+		t.notify(timr.EventTimerReset, t)
+	}
 }
 
 func (t *timer) Remaining() (remaining time.Duration, isRunning bool) {
