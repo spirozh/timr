@@ -16,7 +16,16 @@ type TimerService interface {
 	List() []string
 	Get(name string) (Timer, error)
 	Remove(name string) error
+
+	Subscribe(callback EventCallback) *EventSubscription
+	Unsubscribe(*EventSubscription)
 }
+
+type EventSubscription struct {
+	Callback EventCallback
+}
+
+type EventCallback func(eventType TimrEventType, name string, timer Timer)
 
 type TimrEventType int
 
@@ -35,17 +44,6 @@ var timrEventNameOffsets = [...]int{0, 7, 14, 20, 27, 32, 39}
 
 func (t TimrEventType) String() string {
 	return timrEventNames[timrEventNameOffsets[t]:timrEventNameOffsets[t+1]]
-}
-
-type EventSubscription struct {
-	Callback EventCallback
-}
-
-type EventCallback func(eventType TimrEventType, name string, timer Timer)
-
-type Subscribable interface {
-	Subscribe(callback EventCallback) *EventSubscription
-	Unsubscribe(*EventSubscription)
 }
 
 // errors

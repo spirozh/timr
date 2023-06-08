@@ -14,8 +14,6 @@ type timerService struct {
 	subscribers []*timr.EventSubscription
 }
 
-var _ timr.Subscribable = (*timerService)(nil)
-
 func TimerService(clock func() time.Time) timr.TimerService {
 	ts := &timerService{
 		clock:       clock,

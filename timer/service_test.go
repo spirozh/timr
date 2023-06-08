@@ -67,7 +67,6 @@ func TestTimerServiceListAndRemove(t *testing.T) {
 
 func TestTimerServiceSubscription(t *testing.T) {
 	ts := TimerService(Now)
-	ss := ts.(timr.Subscribable)
 
 	var (
 		calledEventType timr.TimrEventType
@@ -89,7 +88,7 @@ func TestTimerServiceSubscription(t *testing.T) {
 		calledEventType, calledName, calledCount = eventType, name, calledCount+1
 	}
 
-	sub1 := ss.Subscribe(cb)
+	sub1 := ts.Subscribe(cb)
 
 	// when a call fails, there should be no notification
 	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, func() error { _, err := ts.Get("a"); return err }()) }, 0, "", 0)
@@ -100,35 +99,34 @@ func TestTimerServiceSubscription(t *testing.T) {
 	ensure(func() { ts.Remove("a") }, timr.EventTimerRemoved, "a", 1)
 
 	// double subscription (on the same callback) means double notification
-	sub2 := ss.Subscribe(cb)
+	sub2 := ts.Subscribe(cb)
 	ensure(func() { ts.Create("a", 0) }, timr.EventTimerCreated, "a", 2)
 	ensure(func() { ts.Remove("a") }, timr.EventTimerRemoved, "a", 2)
 
-	ss.Unsubscribe(sub1)
-	ss.Unsubscribe(sub2)
+	ts.Unsubscribe(sub1)
+	ts.Unsubscribe(sub2)
 }
 
 func TestTimerServiceUnsubscription(t *testing.T) {
 	ts := TimerService(Now)
-	ss := ts.(timr.Subscribable)
 
 	// subscriptions are properly removed
 	var s string
-	suba := ss.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "a" })
-	subb := ss.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "b" })
-	subc := ss.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "c" })
+	suba := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "a" })
+	subb := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "b" })
+	subc := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "c" })
 	ts.Create("a", 0)
 	test.Equal(t, "abc", s)
 
-	ss.Unsubscribe(subb)
+	ts.Unsubscribe(subb)
 	ts.Remove("a")
 	test.Equal(t, "abcac", s)
 
-	ss.Unsubscribe(suba)
+	ts.Unsubscribe(suba)
 	ts.Create("a", 0)
 	test.Equal(t, "abcacc", s)
 
-	ss.Unsubscribe(subc)
+	ts.Unsubscribe(subc)
 	ts.Remove("a")
 	test.Equal(t, "abcacc", s)
 }
