@@ -11,7 +11,7 @@ import (
 func noNotify(timr.TimrEventType, timr.Timer) {}
 
 func TestTimerReset(t *testing.T) {
-	now := time.Now()
+	now := time.Now().UTC()
 	clock := func() time.Time { return now }
 	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
 
@@ -20,7 +20,7 @@ func TestTimerReset(t *testing.T) {
 }
 
 func TestTimerPauseResumeReset(t *testing.T) {
-	now := time.Now()
+	now := time.Now().UTC()
 	clock := func() time.Time { return now }
 	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
 
@@ -46,7 +46,7 @@ func TestTimerPauseResumeReset(t *testing.T) {
 }
 
 func TestTimerRemaining(t *testing.T) {
-	t0 := time.Now()
+	t0 := time.Now().UTC()
 	tMinus1 := t0.Add(-time.Minute)
 
 	tc := func(remaining time.Duration, duration time.Duration, start *time.Time, elapsed time.Duration) {

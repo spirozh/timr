@@ -8,7 +8,7 @@ import (
 	"github.com/spirozh/timr/test"
 )
 
-var now time.Time = time.Now()
+var now time.Time = time.Now().UTC()
 
 func Now() time.Time {
 	return now
