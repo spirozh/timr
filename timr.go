@@ -44,7 +44,7 @@ type EventSubscription struct {
 	Callback EventCallback
 }
 
-type EventCallback func(eventType ServiceEventType, name string)
+type EventCallback func(eventType ServiceEventType, name string, timer Timer)
 
 type Subscribable interface {
 	Subscribe(callback EventCallback) *EventSubscription
