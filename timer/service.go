@@ -54,14 +54,16 @@ func (ts *timerService) Create(name string, duration time.Duration) error {
 		return timr.ErrTimerExists
 	}
 
-	notify := func(e timr.TimrEventType, t timr.Timer) {
-		ts.notify(e, name, t)
+	t := &timer{
+		clock: ts.clock,
+		notify: func(e timr.TimrEventType, t timr.Timer) {
+			ts.notify(e, name, t)
+		},
+		duration: duration,
 	}
-
-	t := &timer{ts.clock, notify, duration, nil, 0}
 	ts.timers[name] = t
 
-	ts.notify(timr.EventTimerCreated, name, t)
+	ts.notify(timr.Created, name, t)
 	return nil
 }
 
@@ -82,7 +84,7 @@ func (ts *timerService) Remove(name string) error {
 
 	delete(ts.timers, name)
 
-	ts.notify(timr.EventTimerRemoved, name, t)
+	ts.notify(timr.Removed, name, t)
 	return nil
 }
 

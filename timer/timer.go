@@ -24,7 +24,7 @@ func (t *timer) Resume() {
 	}
 
 	if t.notify != nil {
-		t.notify(timr.EventTimerResumed, t)
+		t.notify(timr.Resumed, t)
 	}
 }
 
@@ -35,7 +35,7 @@ func (t *timer) Pause() {
 	}
 
 	if t.notify != nil {
-		t.notify(timr.EventTimerPaused, t)
+		t.notify(timr.Paused, t)
 	}
 }
 
@@ -46,7 +46,7 @@ func (t *timer) Reset() {
 	}
 
 	if t.notify != nil {
-		t.notify(timr.EventTimerReset, t)
+		t.notify(timr.Reset, t)
 	}
 }
 

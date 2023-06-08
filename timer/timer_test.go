@@ -93,9 +93,9 @@ func TestTimerNotifications(t *testing.T) {
 	(*testTimer).notify = func(e timr.TimrEventType, t timr.Timer) {
 		calledEventType, calledTimer = e, t.(*timer)
 	}
-	ensure(testTimer.Pause, timr.EventTimerPaused, testTimer)
-	ensure(testTimer.Resume, timr.EventTimerResumed, testTimer)
-	ensure(testTimer.Reset, timr.EventTimerReset, testTimer)
+	ensure(testTimer.Pause, timr.Paused, testTimer)
+	ensure(testTimer.Resume, timr.Resumed, testTimer)
+	ensure(testTimer.Reset, timr.Reset, testTimer)
 }
 
 func mmss(s string) time.Time {

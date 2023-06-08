@@ -95,13 +95,13 @@ func TestTimerServiceSubscription(t *testing.T) {
 	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, ts.Remove("a")) }, 0, "", 0)
 
 	// all events are emitted
-	ensure(func() { ts.Create("a", 0) }, timr.EventTimerCreated, "a", 1)
-	ensure(func() { ts.Remove("a") }, timr.EventTimerRemoved, "a", 1)
+	ensure(func() { ts.Create("a", 0) }, timr.Created, "a", 1)
+	ensure(func() { ts.Remove("a") }, timr.Removed, "a", 1)
 
 	// double subscription (on the same callback) means double notification
 	sub2 := ts.Subscribe(cb)
-	ensure(func() { ts.Create("a", 0) }, timr.EventTimerCreated, "a", 2)
-	ensure(func() { ts.Remove("a") }, timr.EventTimerRemoved, "a", 2)
+	ensure(func() { ts.Create("a", 0) }, timr.Created, "a", 2)
+	ensure(func() { ts.Remove("a") }, timr.Removed, "a", 2)
 
 	ts.Unsubscribe(sub1)
 	ts.Unsubscribe(sub2)

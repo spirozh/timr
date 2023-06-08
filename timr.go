@@ -31,11 +31,11 @@ type TimrEventType int
 
 const (
 	_ TimrEventType = iota
-	EventTimerCreated
-	EventTimerPaused
-	EventTimerResumed
-	EventTimerReset
-	EventTimerRemoved
+	Created
+	Paused
+	Resumed
+	Reset
+	Removed
 
 	timrEventNames string = "UnknownCreatedPausedResumedResetRemoved"
 )
