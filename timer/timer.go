@@ -7,20 +7,19 @@ import (
 )
 
 type timer struct {
-	now    func() time.Time
+	clock  func() time.Time
 	notify func(timr.TimrEventType, timr.Timer)
 
 	duration time.Duration
-	start    *time.Time
-	elapsed  time.Duration
+	start    *time.Time    // when was timer resumed
+	elapsed  time.Duration // how much time was elapsed before the timer was last started
 }
 
 var _ timr.Timer = (*timer)(nil)
 
 func (t *timer) Resume() {
 	if t.start == nil {
-		now := t.now()
-		t.start = &now
+		*t.start = t.clock()
 	}
 
 	t.notify(timr.EventTimerResumed, t)
@@ -28,7 +27,7 @@ func (t *timer) Resume() {
 
 func (t *timer) Pause() {
 	if t.start != nil {
-		t.elapsed += t.now().Sub(*t.start)
+		t.elapsed += t.clock().Sub(*t.start)
 		t.start = nil
 	}
 
@@ -38,7 +37,7 @@ func (t *timer) Pause() {
 func (t *timer) Reset() {
 	t.elapsed = 0
 	if t.start != nil {
-		*t.start = t.now()
+		*t.start = t.clock()
 	}
 
 	t.notify(timr.EventTimerReset, t)
@@ -51,5 +50,5 @@ func (t *timer) Remaining() (remaining time.Duration, isRunning bool) {
 		return remaining, false
 	}
 
-	return remaining - t.now().Sub(*t.start), true
+	return remaining - t.clock().Sub(*t.start), true
 }
