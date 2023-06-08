@@ -31,13 +31,13 @@ const (
 	EventTimerReset
 	EventTimerRemoved
 
-	serviceEventNames string = "CreatedPausedResumedResetRemoved"
+	serviceEventNames string = "UnknownCreatedPausedResumedResetRemoved"
 )
 
-var serviceEventNameOffsets = [...]int{0, 7, 13, 20, 25, 32}
+var serviceEventNameOffsets = [...]int{0, 7, 14, 20, 27, 32, 39}
 
 func (t ServiceEventType) String() string {
-	return serviceEventNames[serviceEventNameOffsets[t-1]:serviceEventNameOffsets[t]]
+	return serviceEventNames[serviceEventNameOffsets[t]:serviceEventNameOffsets[t+1]]
 }
 
 type EventSubscription struct {
