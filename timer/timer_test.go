@@ -71,6 +71,33 @@ func TestTimerRemaining(t *testing.T) {
 	tc(0, 4*time.Minute, &tMinus1, 3*time.Minute)           // dur 4m, 1 min ago, 3 segments
 }
 
+func TestTimerNotifications(t *testing.T) {
+	var (
+		calledEventType timr.TimrEventType
+		calledTimer     *timer
+	)
+
+	ensure := func(call func(), e timr.TimrEventType, pt *timer) {
+		call()
+		t.Helper()
+		test.Equal(t, e, calledEventType)
+		test.Equal(t, pt, calledTimer)
+		calledEventType, calledTimer = 0, nil
+	}
+
+	testTimer := &timer{time.Now, nil, time.Minute, nil, 0}
+	ensure(testTimer.Pause, 0, nil)
+	ensure(testTimer.Resume, 0, nil)
+	ensure(testTimer.Reset, 0, nil)
+
+	(*testTimer).notify = func(e timr.TimrEventType, t timr.Timer) {
+		calledEventType, calledTimer = e, t.(*timer)
+	}
+	ensure(testTimer.Pause, timr.EventTimerPaused, testTimer)
+	ensure(testTimer.Resume, timr.EventTimerResumed, testTimer)
+	ensure(testTimer.Reset, timr.EventTimerReset, testTimer)
+}
+
 func mmss(s string) time.Time {
 	t, _ := time.Parse("04:05", s)
 	return t

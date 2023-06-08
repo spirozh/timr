@@ -75,17 +75,14 @@ func TestTimerServiceSubscription(t *testing.T) {
 		calledCount     int
 	)
 
-	reset := func() {
-		calledEventType, calledName, calledCount = 0, "", 0
-	}
-
 	ensure := func(call func(), eventType timr.TimrEventType, name string, count int) {
 		call()
 		t.Helper()
 		test.Equal(t, eventType, calledEventType)
 		test.Equal(t, name, calledName)
 		test.Equal(t, count, calledCount)
-		reset()
+
+		calledEventType, calledName, calledCount = 0, "", 0
 	}
 
 	cb := func(eventType timr.TimrEventType, name string, _ timr.Timer) {
