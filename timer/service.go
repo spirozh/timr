@@ -17,47 +17,41 @@ type timerService struct {
 var _ timr.Subscribable = (*timerService)(nil)
 
 func TimerService(clock func() time.Time) timr.TimerService {
-	return &timerService{
-		clock:  clock,
-		timers: restore(),
-
+	ts := &timerService{
+		clock:       clock,
+		timers:      map[string]timr.Timer{},
 		subscribers: []*timr.EventSubscription{},
 	}
+
+	return ts
 }
 
-func save(map[string]timr.Timer) {}
-func restore() map[string]timr.Timer {
-	return map[string]timr.Timer{}
-}
-
-func (s *timerService) Subscribe(callback timr.EventCallback) *timr.EventSubscription {
+func (ts *timerService) Subscribe(callback timr.EventCallback) *timr.EventSubscription {
 	sub := &timr.EventSubscription{Callback: callback}
-	s.subscribers = append(s.subscribers, sub)
+	ts.subscribers = append(ts.subscribers, sub)
 	return sub
 }
 
-func (s *timerService) Unsubscribe(sub *timr.EventSubscription) {
+func (ts *timerService) Unsubscribe(sub *timr.EventSubscription) {
 	// find the index of the subscription
-	i := slices.Index(s.subscribers, sub)
+	i := slices.Index(ts.subscribers, sub)
 	if i == -1 {
 		return
 	}
 
 	// swap withthe last one and reslice
-	s.subscribers[i], s.subscribers[len(s.subscribers)-1] = s.subscribers[len(s.subscribers)-1], s.subscribers[i]
-	s.subscribers = s.subscribers[:len(s.subscribers)-1]
+	ts.subscribers[i], ts.subscribers[len(ts.subscribers)-1] = ts.subscribers[len(ts.subscribers)-1], ts.subscribers[i]
+	ts.subscribers = ts.subscribers[:len(ts.subscribers)-1]
 }
 
-func (s *timerService) notifyAndSave(t timr.ServiceEventType, name string) {
-	for _, sub := range s.subscribers {
-		go sub.Callback(t, name)
+func (ts *timerService) notify(t timr.ServiceEventType, name string, timer timr.Timer) {
+	for _, sub := range ts.subscribers {
+		sub.Callback(t, name, timer)
 	}
-
-	save(s.timers)
 }
 
-func (s *timerService) getTimer(name string) (timr.Timer, error) {
-	timer, ok := s.timers[name]
+func (ts *timerService) getTimer(name string) (timr.Timer, error) {
+	timer, ok := ts.timers[name]
 	if ok {
 		return timer, nil
 	}
@@ -65,82 +59,83 @@ func (s *timerService) getTimer(name string) (timr.Timer, error) {
 	return nil, timr.ErrNoSuchTimer
 }
 
-func (s *timerService) Create(name string, duration time.Duration) error {
-	_, exists := s.timers[name]
+func (ts *timerService) Create(name string, duration time.Duration) error {
+	_, exists := ts.timers[name]
 	if exists {
 		return timr.ErrTimerExists
 	}
 
-	s.timers[name] = Timer(duration)
+	t := Timer(duration)
+	ts.timers[name] = t
 
-	s.notifyAndSave(timr.EventTimerCreated, name)
+	ts.notify(timr.EventTimerCreated, name, t)
 	return nil
 }
 
-func (s *timerService) List() []string {
+func (ts *timerService) List() []string {
 	names := []string{}
 
-	for name := range s.timers {
+	for name := range ts.timers {
 		names = append(names, name)
 	}
 
 	return names
 }
 
-func (s *timerService) Pause(name string) error {
-	timer, err := s.getTimer(name)
+func (ts *timerService) Pause(name string) error {
+	timer, err := ts.getTimer(name)
 	if err != nil {
 		return err
 	}
 
-	timer.Pause(s.clock())
+	timer.Pause(ts.clock())
 
-	s.notifyAndSave(timr.EventTimerPaused, name)
+	ts.notify(timr.EventTimerPaused, name, timer)
 	return nil
 }
 
-func (s *timerService) Resume(name string) error {
-	timer, err := s.getTimer(name)
+func (ts *timerService) Resume(name string) error {
+	timer, err := ts.getTimer(name)
 	if err != nil {
 		return err
 	}
 
-	timer.Resume(s.clock())
+	timer.Resume(ts.clock())
 
-	s.notifyAndSave(timr.EventTimerResumed, name)
+	ts.notify(timr.EventTimerResumed, name, timer)
 	return nil
 }
 
-func (s *timerService) Reset(name string) error {
-	timer, err := s.getTimer(name)
+func (ts *timerService) Reset(name string) error {
+	timer, err := ts.getTimer(name)
 	if err != nil {
 		return err
 	}
 
 	timer.Reset()
 
-	s.notifyAndSave(timr.EventTimerReset, name)
+	ts.notify(timr.EventTimerReset, name, timer)
 	return nil
 }
 
-func (s *timerService) Remaining(name string) (remaining time.Duration, isPaused bool, err error) {
-	timer, err := s.getTimer(name)
+func (ts *timerService) Remaining(name string) (remaining time.Duration, isPaused bool, err error) {
+	timer, err := ts.getTimer(name)
 	if err != nil {
 		return 0, false, err
 	}
 
-	remaining, paused := timer.Remaining(s.clock())
+	remaining, paused := timer.Remaining(ts.clock())
 	return remaining, paused, nil
 }
 
-func (s *timerService) Remove(name string) error {
-	_, err := s.getTimer(name)
+func (ts *timerService) Remove(name string) error {
+	_, err := ts.getTimer(name)
 	if err != nil {
 		return err
 	}
 
-	delete(s.timers, name)
+	delete(ts.timers, name)
 
-	s.notifyAndSave(timr.EventTimerRemoved, name)
+	ts.notify(timr.EventTimerRemoved, name, nil)
 	return nil
 }

@@ -71,6 +71,8 @@ func TestTimerServiceCreateRunningTimerError(t *testing.T) {
 	s.Create("x", time.Minute)
 	err = s.Create("x", time.Minute)
 	test.Equal(t, timr.ErrTimerExists, err)
+
+	//t.Fail()
 }
 
 func TestTimerServiceListAndRemove(t *testing.T) {
@@ -115,7 +117,7 @@ func TestTimerServiceSubscription(t *testing.T) {
 		reset()
 	}
 
-	cb := func(eventType timr.ServiceEventType, name string) {
+	cb := func(eventType timr.ServiceEventType, name string, _ timr.Timer) {
 		calledEventType, calledName, calledCount = eventType, name, calledCount+1
 	}
 
@@ -152,9 +154,9 @@ func TestTimerServiceUnsubscription(t *testing.T) {
 
 	// subscriptions are properly removed
 	var s string
-	suba := ss.Subscribe(func(e timr.ServiceEventType, n string) { s += "a" })
-	subb := ss.Subscribe(func(e timr.ServiceEventType, n string) { s += "b" })
-	subc := ss.Subscribe(func(e timr.ServiceEventType, n string) { s += "c" })
+	suba := ss.Subscribe(func(e timr.ServiceEventType, n string, _ timr.Timer) { s += "a" })
+	subb := ss.Subscribe(func(e timr.ServiceEventType, n string, _ timr.Timer) { s += "b" })
+	subc := ss.Subscribe(func(e timr.ServiceEventType, n string, _ timr.Timer) { s += "c" })
 	ts.Create("a", 0)
 	test.Equal(t, "abc", s)
 

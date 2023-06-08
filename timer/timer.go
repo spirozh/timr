@@ -9,13 +9,13 @@ import (
 type timer struct {
 	duration time.Duration
 	start    *time.Time
-	segments []time.Duration
+	elapsed  time.Duration
 }
 
 var _ timr.Timer = (*timer)(nil)
 
 func Timer(d time.Duration) *timer {
-	return &timer{d, nil, nil}
+	return &timer{d, nil, 0}
 }
 
 func (t *timer) Resume(now time.Time) {
@@ -26,24 +26,21 @@ func (t *timer) Resume(now time.Time) {
 
 func (t *timer) Pause(now time.Time) {
 	if t.start != nil {
-		t.segments = append(t.segments, now.Sub(*t.start))
+		t.elapsed += now.Sub(*t.start)
 		t.start = nil
 	}
 }
 
 func (t *timer) Reset() {
-	t.start, t.segments = nil, nil
+	t.start, t.elapsed = nil, 0
 }
 
-func (t *timer) Remaining(now time.Time) (duration time.Duration, isRunning bool) {
-	duration += t.duration
-	for _, seg := range t.segments {
-		duration -= seg
-	}
+func (t *timer) Remaining(now time.Time) (remaining time.Duration, isRunning bool) {
+	remaining = t.duration - t.elapsed
 
 	if t.start == nil {
-		return duration, false
+		return remaining, false
 	}
 
-	return duration - now.Sub(*t.start), true
+	return remaining - now.Sub(*t.start), true
 }
