@@ -36,7 +36,10 @@ func (t *timer) Pause() {
 }
 
 func (t *timer) Reset() {
-	t.start, t.elapsed = nil, 0
+	t.elapsed = 0
+	if t.start != nil {
+		*t.start = t.now()
+	}
 
 	t.notify(timr.EventTimerReset, t)
 }

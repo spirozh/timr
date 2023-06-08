@@ -8,69 +8,51 @@ import (
 	"github.com/spirozh/timr/test"
 )
 
-func TestTimerPauseResume(t *testing.T) {
-	// TODO: think about this...
-	mmss := func(s string) time.Time {
-		t, _ := time.Parse("04:05", s)
-		return t
-	}
+func noNotify(timr.TimrEventType, timr.Timer) {}
 
-	dur := func(s string) time.Duration {
-		return mmss(s).Sub(mmss("00:00"))
-	}
-
-	str := func(d time.Duration) string {
-		f := "04:05"
-		if d < 0 {
-			d, f = -d, "-"+f
-		}
-		return mmss("00:00").Add(d).Format(f)
-	}
-
+func TestTimerReset(t *testing.T) {
 	now := time.Now()
 	clock := func() time.Time { return now }
-	notify := func(timr.TimrEventType, timr.Timer) {}
-	timer := &timer{clock, notify, dur("01:00"), nil, 0}
-
-	advance := func(s string) {
-		now = now.Add(dur(s))
-	}
-
-	shouldRemain := func(s string) {
-		t.Helper()
-		remaining, _ := timer.Remaining()
-		if str(remaining) != s {
-			t.Errorf("time remaining should be: %#v, was: %#v", s, str(remaining))
-		}
-	}
+	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
 
 	timer.Resume()
-	advance("00:05")
+
+}
+
+func TestTimerPauseResumeReset(t *testing.T) {
+	now := time.Now()
+	clock := func() time.Time { return now }
+	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
+
+	timer.Resume()
+	advance(&now, "00:05")
 	timer.Pause()
-	shouldRemain("00:55")
-	advance("00:05")
-	shouldRemain("00:55")
+	shouldRemain(t, timer, "00:55")
+	advance(&now, "00:05")
+	shouldRemain(t, timer, "00:55")
 	timer.Resume()
-	advance("00:55")
-	shouldRemain("00:00")
+	advance(&now, "00:55")
+	shouldRemain(t, timer, "00:00")
 	timer.Pause()
-	advance("01:00")
-	shouldRemain("00:00")
+	advance(&now, "01:00")
+	shouldRemain(t, timer, "00:00")
 	timer.Resume()
-	advance("01:00")
-	shouldRemain("-01:00")
-
+	advance(&now, "01:00")
+	shouldRemain(t, timer, "-01:00")
+	timer.Reset()
+	shouldRemain(t, timer, "01:00")
+	advance(&now, "00:30")
+	shouldRemain(t, timer, "00:30")
 }
 
 func TestTimerRemaining(t *testing.T) {
 	t0 := time.Now()
 	tMinus1 := t0.Add(-time.Minute)
 
-	tc := func(remaining time.Duration, duration time.Duration, start *time.Time, elapsedTime time.Duration) {
+	tc := func(remaining time.Duration, duration time.Duration, start *time.Time, elapsed time.Duration) {
 		t.Helper()
-		now := func() time.Time { return t0 }
-		notify := func(e timr.TimrEventType, thisTimer timr.Timer) {}
-		testTimer := timer{now, notify, duration, start, elapsedTime}
+		clock := func() time.Time { return t0 }
+		testTimer := timer{clock, noNotify, duration, start, elapsed}
 
 		actualRemaining, isRunning := testTimer.Remaining()
 		test.Equal(t, remaining, actualRemaining)
@@ -87,4 +69,33 @@ func TestTimerRemaining(t *testing.T) {
 	tc(3*time.Minute, 4*time.Minute, nil, time.Minute)      // dur 4m, not running, 1 segment
 	tc(2*time.Minute, 4*time.Minute, &tMinus1, time.Minute) // dur 4m, 1 min ago, 1 segment
 	tc(0, 4*time.Minute, &tMinus1, 3*time.Minute)           // dur 4m, 1 min ago, 3 segments
+}
+
+func mmss(s string) time.Time {
+	t, _ := time.Parse("04:05", s)
+	return t
+}
+
+func dur(s string) time.Duration {
+	return mmss(s).Sub(mmss("00:00"))
+}
+
+func str(d time.Duration) string {
+	f := "04:05"
+	if d < 0 {
+		d, f = -d, "-"+f
+	}
+	return mmss("00:00").Add(d).Format(f)
+}
+
+func advance(now *time.Time, s string) {
+	*now = now.Add(dur(s))
+}
+
+func shouldRemain(t *testing.T, timer timr.Timer, s string) {
+	t.Helper()
+	remaining, _ := timer.Remaining()
+	if str(remaining) != s {
+		t.Errorf("time remaining should be: %#v, was: %#v", s, str(remaining))
+	}
 }

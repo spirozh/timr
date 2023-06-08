@@ -36,7 +36,7 @@ func TestTimerServiceNoSuchTimerError(t *testing.T) {
 	test.Equal(t, nil, s.Remove("x"))
 }
 
-func TestTimerServiceCreateRunningTimerError(t *testing.T) {
+func TestTimerServiceCreateExistingTimerError(t *testing.T) {
 	s := TimerService(Now)
 
 	// create timer
