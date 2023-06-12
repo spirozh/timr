@@ -10,5 +10,4 @@ type App struct {
 
 func main() {
 	http.Serve()
-	//fmt.Println("fuck me.")
 }
