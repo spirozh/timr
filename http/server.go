@@ -8,15 +8,16 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/spirozh/timr"
 )
 
-func Serve() {
+func Serve(ts timr.TimerService) {
 	defer fmt.Println("quitting serve")
-	http.Handle("/", routes())
 
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: routes(),
+		Handler: routes(ts),
 	}
 
 	go func() {

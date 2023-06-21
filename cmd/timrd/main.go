@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spirozh/timr/http"
+	"github.com/spirozh/timr/timer"
 )
-
-type App struct {
-	//htmx *htmx.HTMX
-}
 
 func main() {
 	fmt.Println("starting timrd")
-	http.Serve()
+	http.Serve(timer.TimerService(time.Now))
 }
