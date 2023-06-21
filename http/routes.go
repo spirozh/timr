@@ -28,9 +28,6 @@ func APIRoutes(ts timr.TimerService) http.Handler {
 	m.HandleFunc("/api/resume/", nothingYet) // /api/resume/name
 	m.HandleFunc("/api/delete/", nothingYet) // /api/delete/name
 
-	m.HandleFunc("/api/listen/", nothingYet) // /api/listen/name/token
-	m.HandleFunc("/api/silent/", nothingYet) // /api/silent/name/token
-
 	// sse route
 	m.HandleFunc("/api/sse/long/", Long)
 
