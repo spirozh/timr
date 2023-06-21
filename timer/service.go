@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/spirozh/timr"
-	"golang.org/x/exp/slices"
+	//"golang.org/x/exp/slices"
 )
 
 type timerService struct {
@@ -30,9 +30,18 @@ func (ts *timerService) Subscribe(callback timr.EventCallback) *timr.EventSubscr
 	return sub
 }
 
+func (ts *timerService) subscriberIndex(sub *timr.EventSubscription) int {
+	for i, subscriber := range ts.subscribers {
+		if subscriber == sub {
+			return i
+		}
+	}
+	return -1
+}
+
 func (ts *timerService) Unsubscribe(sub *timr.EventSubscription) {
 	// find the index of the subscription
-	i := slices.Index(ts.subscribers, sub)
+	i := ts.subscriberIndex(sub)
 	if i == -1 {
 		return
 	}

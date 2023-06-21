@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/spirozh/timr/http"
 )
 
@@ -9,5 +11,6 @@ type App struct {
 }
 
 func main() {
+	fmt.Println("starting timrd")
 	http.Serve()
 }
