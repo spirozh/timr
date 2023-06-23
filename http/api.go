@@ -1,10 +1,11 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
+	"sync"
 
 	"github.com/spirozh/timr"
 )
@@ -27,25 +28,34 @@ func sseSetup(w http.ResponseWriter, r *http.Request) (flusher http.Flusher, ok 
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	flusher.Flush()
 	return
 }
 
-type TimerState struct {
-	Running   bool  `json:"running"`
-	Remaining int64 `json:"remaining"`
-}
-
-// SSE handles /api/sse/token
+// SSE handles /api/sse/
 func SSE(ts timr.TimerService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Print("SSE!!")
+
 		flusher, ok := sseSetup(w, r)
 		if !ok {
 			return
 		}
 
-		ticker := time.NewTicker(time.Second)
-
 		// first connection: send json for all timers
+		m := map[string]timr.TimerState{}
+		for _, name := range ts.List() {
+			fmt.Printf("output data for %v\n", name)
+
+			t, _ := ts.Get(name)
+			m[name] = t.State()
+			j, err := json.Marshal(m)
+			if err == nil {
+				fmt.Fprintf(w, "data: %s\n\n", string(j))
+				flusher.Flush()
+			}
+			delete(m, name)
+		}
 
 		// after each state change, send json for just one timer
 		//
@@ -53,19 +63,31 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 		//  {'name': {'running': bool, 'remaining': milliseconds}}
 		// or (for delete)
 		//  {'name': null}
+		mu := sync.Mutex{}
+		tsEventHandler := func(eventType timr.TimrEventType, name string, timer timr.Timer) {
+			mu.Lock()
+			defer mu.Unlock()
 
-		for i := 0; ; i++ {
-			fmt.Printf("SSE: %d\n", i)
-			fmt.Fprintf(w, "data: %d\n\n", i)
-			flusher.Flush()
+			if eventType != timr.Removed {
+				m[name] = timer.State()
+				j, err := json.Marshal(m)
+				if err == nil {
+					fmt.Fprintf(w, "data: %s\n\n", string(j))
+					flusher.Flush()
+				}
+				delete(m, name)
 
-			select {
-			case <-r.Context().Done():
-				ticker.Stop()
 				return
-			case <-ticker.C:
-				continue
 			}
+
+			fmt.Fprintf(w, "data: {\"%s\": null}\n\n", name)
+			flusher.Flush()
 		}
+		sub := ts.Subscribe(tsEventHandler)
+		defer ts.Unsubscribe(sub)
+
+		<-r.Context().Done()
+
+		fmt.Print("EXITING SSE")
 	}
 }
