@@ -37,11 +37,8 @@ func APIRoutes(ts timr.TimerService) http.Handler {
 func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
 
-	// templates
-	m.Handle("/", TemplateRoutes())
-
-	// static
-	m.Handle("/static/", http.FileServer(http.FS(html.Static)))
+	// filesystem
+	m.Handle("/", http.FileServer(http.FS(html.FS)))
 
 	// api
 	m.Handle("/api/", APIRoutes(ts))
