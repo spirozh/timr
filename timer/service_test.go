@@ -65,7 +65,7 @@ func TestTimerServiceListAndRemove(t *testing.T) {
 	test.ElementsMatch(t, []string{}, s.List())
 }
 
-func TestTimerServiceSubscription(t *testing.T) {
+func TestTimerServiceSubscribe(t *testing.T) {
 	ts := TimerService(Now)
 
 	var (
@@ -107,26 +107,39 @@ func TestTimerServiceSubscription(t *testing.T) {
 	ts.Unsubscribe(sub2)
 }
 
-func TestTimerServiceUnsubscription(t *testing.T) {
+func TestTimerServiceUnsubscribe(t *testing.T) {
 	ts := TimerService(Now)
 
 	// subscriptions are properly removed
 	var s string
-	suba := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "a" })
-	subb := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "b" })
-	subc := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "c" })
+	subA := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "a " })
+	subB := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "b " })
+	subC := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "c " })
+	test.NotEqual(t, subA, subB)
+	test.NotEqual(t, subA, subC)
+	test.NotEqual(t, subB, subC)
+
 	ts.Create("a", 0)
-	test.Equal(t, "abc", s)
+	test.Equal(t, "a b c ", s)
 
-	ts.Unsubscribe(subb)
+	ts.Unsubscribe(subB)
 	ts.Remove("a")
-	test.Equal(t, "abcac", s)
+	test.Equal(t, "a b c a c ", s)
 
-	ts.Unsubscribe(suba)
+	ts.Unsubscribe(subA)
 	ts.Create("a", 0)
-	test.Equal(t, "abcacc", s)
+	test.Equal(t, "a b c a c c ", s)
 
-	ts.Unsubscribe(subc)
+	ts.Unsubscribe(subB)
 	ts.Remove("a")
-	test.Equal(t, "abcacc", s)
+	test.Equal(t, "a b c a c c c ", s)
+
+	ts.Unsubscribe(subC)
+	ts.Create("a", 0)
+	test.Equal(t, "a b c a c c c ", s)
+
+	ts.Unsubscribe(subB)
+	ts.Remove("a")
+	test.Equal(t, "a b c a c c c ", s)
+
 }

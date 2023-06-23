@@ -54,9 +54,9 @@ func TestTimerRemaining(t *testing.T) {
 		clock := func() time.Time { return t0 }
 		testTimer := timer{clock, noNotify, duration, start, elapsed}
 
-		actualRemaining, isRunning := testTimer.Remaining()
-		test.Equal(t, remaining, actualRemaining)
-		test.Equal(t, start != nil, isRunning)
+		timerState := testTimer.State()
+		test.Equal(t, remaining.Milliseconds(), timerState.Remaining)
+		test.Equal(t, start != nil, timerState.Running)
 	}
 
 	tc(0, 0, nil, 0)                                        // dur 0m, not started, 0 segments
@@ -121,8 +121,9 @@ func advance(now *time.Time, s string) {
 
 func shouldRemain(t *testing.T, timer timr.Timer, s string) {
 	t.Helper()
-	remaining, _ := timer.Remaining()
-	if str(remaining) != s {
-		t.Errorf("time remaining should be: %#v, was: %#v", s, str(remaining))
+	ts := timer.State()
+	actual := str(time.Duration(ts.Remaining) * time.Millisecond)
+	if actual != s {
+		t.Errorf("time remaining should be: %#v, was: %#v", s, actual)
 	}
 }

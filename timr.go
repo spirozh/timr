@@ -4,8 +4,13 @@ import (
 	"time"
 )
 
+type TimerState struct {
+	Running   bool  `json:"running"`
+	Remaining int64 `json:"remaining"`
+}
+
 type Timer interface {
-	Remaining() (remaining time.Duration, isPaused bool)
+	State() TimerState
 	Pause()
 	Resume()
 	Reset()

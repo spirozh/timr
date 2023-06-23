@@ -29,7 +29,7 @@ func APIRoutes(ts timr.TimerService) http.Handler {
 	m.HandleFunc("/api/delete/", nothingYet) // /api/delete/name
 
 	// sse route
-	m.HandleFunc("/api/sse", SSE)
+	m.HandleFunc("/api/sse", SSE(ts))
 
 	return m
 }

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/spirozh/timr"
 )
 
 // Selma handles /selma
@@ -28,39 +30,42 @@ func sseSetup(w http.ResponseWriter, r *http.Request) (flusher http.Flusher, ok 
 	return
 }
 
+type TimerState struct {
+	Running   bool  `json:"running"`
+	Remaining int64 `json:"remaining"`
+}
+
 // SSE handles /api/sse/token
-func SSE(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := sseSetup(w, r)
-	if !ok {
-		return
-	}
-
-	ticker := time.NewTicker(time.Second)
-
-	// send json for all timers
-	//  {'name': {'running': false, 'remaining': seconds}}
-	//
-	// send updates
-	//  - new timer
-	//  {'name': {'running': false, 'remaining': 2000}}
-	//  - pause timer
-	//  {'name': {'running': false}}
-	//  - unpause timer
-	//  {'name': {'running': true}}
-	//  - delete timer
-	//  {'name': null}
-
-	for i := 0; ; i++ {
-		fmt.Printf("SSE: %d\n", i)
-		fmt.Fprintf(w, "data: %d\n\n", i)
-		flusher.Flush()
-
-		select {
-		case <-r.Context().Done():
-			ticker.Stop()
+func SSE(ts timr.TimerService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := sseSetup(w, r)
+		if !ok {
 			return
-		case <-ticker.C:
-			continue
+		}
+
+		ticker := time.NewTicker(time.Second)
+
+		// first connection: send json for all timers
+
+		// after each state change, send json for just one timer
+		//
+		// either:
+		//  {'name': {'running': bool, 'remaining': milliseconds}}
+		// or (for delete)
+		//  {'name': null}
+
+		for i := 0; ; i++ {
+			fmt.Printf("SSE: %d\n", i)
+			fmt.Fprintf(w, "data: %d\n\n", i)
+			flusher.Flush()
+
+			select {
+			case <-r.Context().Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				continue
+			}
 		}
 	}
 }

@@ -50,12 +50,15 @@ func (t *timer) Reset() {
 	}
 }
 
-func (t *timer) Remaining() (remaining time.Duration, isRunning bool) {
-	remaining = t.duration - t.elapsed
-
-	if t.start == nil {
-		return remaining, false
+func (t *timer) State() timr.TimerState {
+	ts := timr.TimerState{
+		Remaining: (t.duration - t.elapsed).Milliseconds(),
 	}
 
-	return remaining - t.clock().Sub(*t.start), true
+	if t.start != nil {
+		ts.Running = true
+		ts.Remaining -= t.clock().Sub(*t.start).Milliseconds()
+	}
+
+	return ts
 }

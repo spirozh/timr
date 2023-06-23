@@ -46,7 +46,7 @@ func (ts *timerService) Unsubscribe(sub *timr.EventSubscription) {
 		return
 	}
 
-	// swap withthe last one and reslice
+	// swap with the last one and slice the end off
 	ts.subscribers[i], ts.subscribers[len(ts.subscribers)-1] = ts.subscribers[len(ts.subscribers)-1], ts.subscribers[i]
 	ts.subscribers = ts.subscribers[:len(ts.subscribers)-1]
 }
@@ -86,14 +86,13 @@ func (ts *timerService) Get(name string) (timr.Timer, error) {
 }
 
 func (ts *timerService) Remove(name string) error {
-	t, err := ts.Get(name)
-	if err != nil {
-		return err
+	if _, ok := ts.timers[name]; !ok {
+		return timr.ErrNoSuchTimer
 	}
 
 	delete(ts.timers, name)
 
-	ts.notify(timr.Removed, name, t)
+	ts.notify(timr.Removed, name, nil)
 	return nil
 }
 
