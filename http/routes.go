@@ -11,15 +11,16 @@ import (
 func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
 
-	// filesystem
-	m.Handle("/", http.FileServer(http.FS(html.FS)))
+	prefix := "/"
 
 	// api
 	m.Handle("/api/", apiRoutes(ts))
 
 	// selma
-	m.HandleFunc("/selma", Selma)
-	m.HandleFunc("/selma/", Selma)
+	Selma(m, prefix)
+
+	// filesystem
+	FileServer(m, prefix, html.FS)
 
 	return m
 }
