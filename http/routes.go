@@ -10,23 +10,12 @@ import (
 	"github.com/spirozh/timr/html"
 )
 
-func TemplateRoutes() http.Handler {
-	m := http.NewServeMux()
-	return m
-}
-
 func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
-
 	prefix := "/"
 
-	// api
 	APIRoutes(m, prefix, ts) // everything under "/api"
-
-	// selma
 	Selma(m, prefix)
-
-	// filesystem
 	FileServer(m, prefix, html.FS)
 
 	return m
