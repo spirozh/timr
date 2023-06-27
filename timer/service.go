@@ -9,15 +9,19 @@ import (
 
 type timerService struct {
 	clock  func() time.Time
-	timers map[string]timr.Timer
+	timers []timerEntry
 
 	subscribers []*timr.EventSubscription
+}
+type timerEntry struct {
+	name  string
+	timer timr.Timer
 }
 
 func TimerService(clock func() time.Time) timr.TimerService {
 	ts := &timerService{
 		clock:       clock,
-		timers:      map[string]timr.Timer{},
+		timers:      []timerEntry{},
 		subscribers: []*timr.EventSubscription{},
 	}
 
@@ -58,9 +62,10 @@ func (ts *timerService) notify(t timr.TimrEventType, name string, timer timr.Tim
 }
 
 func (ts *timerService) Create(name string, duration time.Duration) error {
-	_, exists := ts.timers[name]
-	if exists {
-		return timr.ErrTimerExists
+	for _, te := range ts.timers {
+		if te.name == name {
+			return timr.ErrTimerExists
+		}
 	}
 
 	t := &timer{
@@ -70,37 +75,43 @@ func (ts *timerService) Create(name string, duration time.Duration) error {
 		},
 		duration: duration,
 	}
-	ts.timers[name] = t
+	ts.timers = append(ts.timers, timerEntry{name, t})
 
 	ts.notify(timr.Created, name, t)
 	return nil
 }
 
 func (ts *timerService) Get(name string) (timr.Timer, error) {
-	timer, ok := ts.timers[name]
-	if ok {
-		return timer, nil
+	for _, te := range ts.timers {
+		if te.name == name {
+			return te.timer, nil
+		}
 	}
 
 	return nil, timr.ErrNoSuchTimer
 }
 
 func (ts *timerService) Remove(name string) error {
-	if _, ok := ts.timers[name]; !ok {
-		return timr.ErrNoSuchTimer
+	for i, te := range ts.timers {
+		if te.name == name {
+			for ; i < len(ts.timers)-1; i++ {
+				ts.timers[i] = ts.timers[i+1]
+			}
+			ts.timers = ts.timers[:len(ts.timers)-1]
+
+			ts.notify(timr.Removed, name, nil)
+			return nil
+		}
 	}
 
-	delete(ts.timers, name)
-
-	ts.notify(timr.Removed, name, nil)
-	return nil
+	return timr.ErrNoSuchTimer
 }
 
 func (ts *timerService) List() []string {
 	names := []string{}
 
-	for name := range ts.timers {
-		names = append(names, name)
+	for _, te := range ts.timers {
+		names = append(names, te.name)
 	}
 
 	return names
