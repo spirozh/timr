@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -14,22 +13,22 @@ func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
 	prefix := "/"
 
-	APIRoutes(m, prefix, ts) // everything under "/api"
-	Selma(m, prefix)
 	FileServer(m, prefix, html.FS)
+	Selma(m, prefix)
+	APIRoutes(m, prefix, ts) // everything under "/api"
 
 	return m
 }
 
 func Selma(m *http.ServeMux, prefix string) {
 	prefix += "selma/"
-	fmt.Println("registering Selma       at:", prefix)
+	timr.INFO("registering Selma at:\t", prefix)
 	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "hello selma!!\n")
 	})
 }
 
 func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
-	fmt.Println("registering FileServer  at:", prefix)
+	timr.INFO("registering FileServer at:\t", prefix)
 	m.Handle(prefix, http.FileServer(http.FS(fsys)))
 }

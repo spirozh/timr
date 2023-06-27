@@ -52,6 +52,7 @@ func (t *timer) Reset() {
 
 func (t *timer) State() timr.TimerState {
 	ts := timr.TimerState{
+		Duration:  t.duration.Milliseconds(),
 		Remaining: (t.duration - t.elapsed).Milliseconds(),
 	}
 

@@ -1,6 +1,8 @@
 package timr
 
 import (
+	"log"
+	"os"
 	"time"
 )
 
@@ -61,4 +63,13 @@ func (e timrError) Error() string {
 const (
 	ErrTimerExists timrError = "Timer Exists"
 	ErrNoSuchTimer timrError = "No Such Timer"
+)
+
+// logging
+
+var (
+	infoLog = log.New(os.Stderr, "INFO: ", log.Ltime)
+	INFO    = func(info ...any) {
+		infoLog.Println(info...)
+	}
 )

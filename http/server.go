@@ -21,7 +21,7 @@ func Serve(ts timr.TimerService) {
 	}
 
 	go func() {
-		fmt.Printf("listening on %v\n", srv.Addr)
+		timr.INFO("listening on", srv.Addr)
 
 		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)

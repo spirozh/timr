@@ -1,39 +1,39 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
+	"github.com/spirozh/timr"
 	"github.com/spirozh/timr/http"
 	"github.com/spirozh/timr/timer"
 )
 
 func main() {
-	fmt.Println("starting timrd")
+	timr.INFO("starting timrd")
 	ts := timer.TimerService(time.Now)
 
 	// debugging state
-	var i int
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		for {
-			list := ts.List()
-			fmt.Printf("%05d) timers: %v\n", i, list)
-			i++
+	sub := ts.Subscribe(func(_ timr.TimrEventType, _ string, _ timr.Timer) {
 
-			for _, name := range list {
-				t, err := ts.Get(name)
-				if err != nil {
-					fmt.Printf(" ! %v: %v\n", name, err)
-					continue
-				}
-				fmt.Printf(" * %v: %v\n", name, t.State())
+		var b bytes.Buffer
+		list := ts.List()
+		fmt.Fprintf(&b, "timers: %v\n", list)
+		for _, name := range list {
+			t, err := ts.Get(name)
+			if err != nil {
+				fmt.Fprintf(&b, " ! %v: %v\n", name, err)
+				continue
 			}
-
-			fmt.Println()
-			<-ticker.C
+			fmt.Fprintf(&b, " * %v: %#v\n", name, t.State())
 		}
-	}()
+		fmt.Fprintln(&b)
+
+		timr.INFO("current timerServer state:\n", b.String())
+	})
 
 	http.Serve(ts)
+
+	ts.Unsubscribe(sub)
 }
