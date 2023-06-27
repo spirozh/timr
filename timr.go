@@ -7,6 +7,7 @@ import (
 )
 
 type TimerState struct {
+	Duration  int64 `json:"duration"`
 	Running   bool  `json:"running"`
 	Remaining int64 `json:"remaining"`
 }
