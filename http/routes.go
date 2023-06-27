@@ -32,18 +32,15 @@ func routes(ts timr.TimerService) http.Handler {
 	return m
 }
 
-func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
-	fmt.Println("registering FileServer  at:", prefix)
-	m.Handle(prefix, http.FileServer(http.FS(fsys)))
-}
-
-// Selma handles /selma
 func Selma(m *http.ServeMux, prefix string) {
 	prefix += "selma/"
 	fmt.Println("registering Selma       at:", prefix)
-	m.HandleFunc(prefix, selma)
+	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "hello selma!!\n")
+	})
 }
 
-func selma(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "hello selma!!\n")
+func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
+	fmt.Println("registering FileServer  at:", prefix)
+	m.Handle(prefix, http.FileServer(http.FS(fsys)))
 }
