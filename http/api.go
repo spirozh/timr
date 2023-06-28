@@ -14,7 +14,7 @@ import (
 
 func APIRoutes(parentM *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "api/"
-	timr.INFO("registering APIRoutes at:\t", prefix)
+	timr.INFO("registering APIRoutes at:\t\t", prefix)
 
 	m := http.NewServeMux()
 
@@ -30,7 +30,7 @@ func APIRoutes(parentM *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func createTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "create/"
-	timr.INFO("registering createTimer at:\t", prefix)
+	timr.INFO("registering + createTimer at:\t", prefix)
 
 	m.HandleFunc(prefix,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func createTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func pauseTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "pause/"
-	timr.INFO("registering pauseTimer at:\t", prefix)
+	timr.INFO("registering + pauseTimer at:\t", prefix)
 
 	m.HandleFunc(prefix,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func pauseTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func resumeTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "resume/"
-	timr.INFO("registering resumeTimer at:\t", prefix)
+	timr.INFO("registering + resumeTimer at:\t", prefix)
 
 	m.HandleFunc(prefix,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func resumeTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func resetTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "reset/"
-	timr.INFO("registering resetTimer at:\t", prefix)
+	timr.INFO("registering + resetTimer at:\t", prefix)
 
 	m.HandleFunc(prefix,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +148,7 @@ func resetTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func deleteTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "delete/"
-	timr.INFO("registering deleteTimer at:\t", prefix)
+	timr.INFO("registering + deleteTimer at:\t", prefix)
 
 	m.HandleFunc(prefix,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +170,7 @@ func deleteTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 
 func sse(m *http.ServeMux, prefix string, ts timr.TimerService) {
 	prefix += "sse/"
-	timr.INFO("registering sse at:\t", prefix)
+	timr.INFO("registering + sse at:\t\t", prefix)
 	m.HandleFunc(prefix, SSE(ts))
 }
 

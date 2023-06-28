@@ -22,13 +22,13 @@ func routes(ts timr.TimerService) http.Handler {
 
 func Selma(m *http.ServeMux, prefix string) {
 	prefix += "selma/"
-	timr.INFO("registering Selma at:\t", prefix)
+	timr.INFO("registering Selma at:\t\t", prefix)
 	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "hello selma!!\n")
 	})
 }
 
 func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
-	timr.INFO("registering FileServer at:\t", prefix)
+	timr.INFO("registering FileServer at:\t\t", prefix)
 	m.Handle(prefix, http.FileServer(http.FS(fsys)))
 }
