@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,7 +52,7 @@ func createTimer(m *http.ServeMux, prefix string, ts timr.TimerService) {
 			name := args[0]
 
 			t, err := strconv.Atoi(args[1])
-			if err != nil {
+			if err != nil || t <= 0 {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprintf(w, "c: bad request: %s (args: %v) %v\n", r.URL.Path, args, err)
 				return
@@ -209,7 +210,7 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 			if eventType != timr.Removed {
 				outputTimer(w, ts, name)
 			} else {
-				fmt.Fprintf(w, "data: {\"%s\": null}\n\n", name)
+				outputNull(w, name)
 			}
 
 			flusher.Flush()
@@ -223,13 +224,24 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 	}
 }
 
-func outputTimer(w http.ResponseWriter, ts timr.TimerService, name string) {
+func outputTimer(w io.Writer, ts timr.TimerService, name string) {
 	t, _ := ts.Get(name)
 	state := t.State()
-	j, err := json.Marshal(state)
+	msg := timr.TimerMessage{Name: name, State: state}
+	j, err := json.Marshal(msg)
 	if err == nil {
-		fmt.Fprintf(w, "data: {\"%s\":%s}\n\n", name, string(j))
+		output(w, string(j))
 	}
+}
+
+func outputNull(w io.Writer, name string) {
+	output(w, fmt.Sprintf(`{"name":"%v"}`, name))
+}
+
+func output(w io.Writer, s string) {
+	io.WriteString(w, "data: ")
+	io.WriteString(w, s)
+	io.WriteString(w, "\n\n")
 }
 
 func sseSetup(w http.ResponseWriter, r *http.Request) (flusher http.Flusher, ok bool) {

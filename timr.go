@@ -12,6 +12,11 @@ type TimerState struct {
 	Remaining int64 `json:"remaining"`
 }
 
+type TimerMessage struct {
+	Name  string     `json:"name"`
+	State TimerState `json:"state"`
+}
+
 type Timer interface {
 	State() TimerState
 	Pause()
