@@ -31,22 +31,9 @@ func Selma(m *http.ServeMux, prefix string) {
 func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
 	timr.INFO("registering FileServer at:\t\t", prefix)
 
-	index, err := http.FS(fsys).Open("index.html")
-	if err != nil {
-		panic("can't open index.html")
-	}
-	info, err := index.Stat()
-	if err != nil {
-		panic("cant stat index.html")
-	}
-
 	fileServer := http.FileServer(http.FS(fsys))
 
 	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			http.ServeContent(w, r, "index.html", info.ModTime(), index)
-		} else {
-			fileServer.ServeHTTP(w, r)
-		}
+		fileServer.ServeHTTP(w, r)
 	})
 }

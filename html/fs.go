@@ -8,12 +8,12 @@ import (
 //go:embed  static
 var staticFS embed.FS
 
-var FS = static{staticFS}
+var FS fs.FS
 
-type static struct {
-	fs embed.FS
-}
-
-func (f static) Open(name string) (fs.File, error) {
-	return f.fs.Open("static/" + name)
+func init() {
+	fs, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic("can't get a subtree filesystem from staticFS")
+	}
+	FS = fs
 }
