@@ -14,7 +14,6 @@ import (
 )
 
 func APIRoutes(parentM *http.ServeMux, prefix string, ts timr.TimerService) {
-	prefix += "api/"
 	timr.INFO("registering APIRoutes at:\t\t", prefix)
 
 	m := http.NewServeMux()

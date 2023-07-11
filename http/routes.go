@@ -11,30 +11,28 @@ import (
 
 func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
-	prefix := "/"
 
-	FileServer(m, prefix, html.FS)
-	Selma(m, prefix)
-	APIRoutes(m, prefix, ts) // everything under "/api"
+	FileServer(m, "/", html.FS)
+	Selma(m, "/selma/")
+	APIRoutes(m, "/api/", ts) // everything under "/api"
 
 	return m
 }
 
-func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
-	timr.INFO("registering FileServer at:\t\t", prefix)
+func FileServer(m *http.ServeMux, path string, fsys fs.FS) {
+	timr.INFO("registering FileServer at:\t\t", path)
 
 	fileServer := http.FileServer(http.FS(fsys))
 
-	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+	m.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		fileServer.ServeHTTP(w, r)
 	})
 }
 
-func Selma(m *http.ServeMux, prefix string) {
-	prefix += "selma/"
-	timr.INFO("registering Selma at:\t\t", prefix)
+func Selma(m *http.ServeMux, path string) {
+	timr.INFO("registering Selma at:\t\t", path)
 
-	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+	m.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "hello selma!!\n")
 	})
 }
