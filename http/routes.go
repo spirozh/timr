@@ -33,6 +33,7 @@ func FileServer(m *http.ServeMux, prefix string, fsys fs.FS) {
 func Selma(m *http.ServeMux, prefix string) {
 	prefix += "selma/"
 	timr.INFO("registering Selma at:\t\t", prefix)
+
 	m.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "hello selma!!\n")
 	})
