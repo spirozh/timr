@@ -24,45 +24,41 @@ func TestTimerServiceNoSuchTimerError(t *testing.T) {
 	s := TimerService(Now)
 
 	// no such timer errors
-	_, err = s.Get("x")
+	_, _, err = s.Get(-1)
 	test.Equal(t, timr.ErrNoSuchTimer, err)
-	test.Equal(t, timr.ErrNoSuchTimer, s.Remove("x"))
+	test.Equal(t, timr.ErrNoSuchTimer, s.Remove(1))
 
 	// when timer is exists there are no errors
-	_ = s.Create("x", time.Minute)
+	id, _ := s.Create("x", durstate(1000))
 
-	_, err = s.Get("x")
+	_, _, err = s.Get(id)
 	test.Equal(t, nil, err)
-	test.Equal(t, nil, s.Remove("x"))
+	test.Equal(t, nil, s.Remove(id))
 }
 
-func TestTimerServiceCreateExistingTimerError(t *testing.T) {
+func TestTimerServiceForAll(t *testing.T) {
 	s := TimerService(Now)
 
-	// create timer
-	test.Equal(t, nil, s.Create("x", time.Minute))
-	test.Equal(t, timr.ErrTimerExists, s.Create("x", time.Minute))
-	test.Equal(t, nil, s.Remove("x"))
-	test.Equal(t, nil, s.Create("x", time.Minute))
-}
-
-func TestTimerServiceListAndRemove(t *testing.T) {
-	s := TimerService(Now)
-
-	test.ElementsMatch(t, []string{}, s.List())
+	count := 0
+	s.ForAll(func(_ int, _ string, _ timr.TimerState) { count++ })
+	test.Equal(t, 0, count)
 
 	names := []string{"a", "b", "c"}
 	for _, name := range names {
-		s.Create(name, 0)
+		s.Create(name, durstate(0))
 	}
 
-	test.ElementsMatch(t, names, s.List())
+	s.ForAll(func(_ int, _ string, _ timr.TimerState) { count++ })
+	test.Equal(t, 3, count)
 
-	for _, name := range names {
-		s.Remove(name)
-	}
+	s.ForAll(func(id int, _ string, _ timr.TimerState) {
+		err := s.Remove(id)
+		test.Equal(t, nil, err)
+	})
 
-	test.ElementsMatch(t, []string{}, s.List())
+	count = 0
+	s.ForAll(func(_ int, _ string, _ timr.TimerState) { count++ })
+	test.Equal(t, 0, count)
 }
 
 func TestTimerServiceSubscribe(t *testing.T) {
@@ -70,41 +66,50 @@ func TestTimerServiceSubscribe(t *testing.T) {
 
 	var (
 		calledEventType timr.TimrEventType
+		calledId        int
 		calledName      string
 		calledCount     int
 	)
 
-	ensure := func(call func(), eventType timr.TimrEventType, name string, count int) {
+	ensure := func(call func(), eventType timr.TimrEventType, id int, name string, count int) {
 		call()
 		t.Helper()
 		test.Equal(t, eventType, calledEventType)
+		test.Equal(t, id, calledId)
 		test.Equal(t, name, calledName)
 		test.Equal(t, count, calledCount)
 
 		calledEventType, calledName, calledCount = 0, "", 0
 	}
 
-	cb := func(eventType timr.TimrEventType, name string, _ timr.Timer) {
-		calledEventType, calledName, calledCount = eventType, name, calledCount+1
+	cb := func(eventType timr.TimrEventType, id int, name string, _ timr.Timer) {
+		calledEventType, calledId, calledName, calledCount = eventType, id, name, calledCount+1
 	}
 
 	sub1 := ts.Subscribe(cb)
 
 	// when a call fails, there should be no notification
-	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, func() error { _, err := ts.Get("a"); return err }()) }, 0, "", 0)
-	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, ts.Remove("a")) }, 0, "", 0)
+	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, func() error { _, _, err := ts.Get(1); return err }()) }, 0, 0, "", 0)
+	ensure(func() { test.Equal(t, timr.ErrNoSuchTimer, ts.Remove(1)) }, 0, 0, "", 0)
 
 	// all events are emitted
-	ensure(func() { ts.Create("a", 0) }, timr.Created, "a", 1)
-	ensure(func() { ts.Remove("a") }, timr.Removed, "a", 1)
+	var id int
+	ensure(func() { id, _ = ts.Create("a", durstate(0)) }, timr.TimrEventCreated, id, "a", 1)
+	// TODO: check that TimrEventSet is emitted
+	ensure(func() { ts.Remove(id) }, timr.TimrEventRemoved, id, "a", 1)
 
 	// double subscription (on the same callback) means double notification
 	sub2 := ts.Subscribe(cb)
-	ensure(func() { ts.Create("a", 0) }, timr.Created, "a", 2)
-	ensure(func() { ts.Remove("a") }, timr.Removed, "a", 2)
+	ensure(func() { id, _ = ts.Create("a", durstate(0)) }, timr.TimrEventCreated, id, "a", 2)
+	ensure(func() { ts.Remove(id) }, timr.TimrEventRemoved, id, "a", 2)
 
 	ts.Unsubscribe(sub1)
 	ts.Unsubscribe(sub2)
+}
+
+func durstate(ms int) timr.TimerState {
+	return timr.TimerState{
+		Duration: &ms}
 }
 
 func TestTimerServiceUnsubscribe(t *testing.T) {
@@ -112,34 +117,41 @@ func TestTimerServiceUnsubscribe(t *testing.T) {
 
 	// subscriptions are properly removed
 	var s string
-	subA := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "a " })
-	subB := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "b " })
-	subC := ts.Subscribe(func(e timr.TimrEventType, n string, _ timr.Timer) { s += "c " })
+	subA := ts.Subscribe(func(e timr.TimrEventType, i int, n string, _ timr.Timer) { s += "a " })
+	subB := ts.Subscribe(func(e timr.TimrEventType, i int, n string, _ timr.Timer) { s += "b " })
+	subC := ts.Subscribe(func(e timr.TimrEventType, i int, n string, _ timr.Timer) { s += "c " })
 	test.NotEqual(t, subA, subB)
 	test.NotEqual(t, subA, subC)
 	test.NotEqual(t, subB, subC)
 
-	ts.Create("a", 0)
+	running := false
+	one := 1
+	state := timr.TimerState{
+		Duration: &one,
+		Running:  &running,
+	}
+
+	a, _ := ts.Create("a", state)
 	test.Equal(t, "a b c ", s)
 
 	ts.Unsubscribe(subB)
-	ts.Remove("a")
+	ts.Remove(a)
 	test.Equal(t, "a b c a c ", s)
 
 	ts.Unsubscribe(subA)
-	ts.Create("a", 0)
+	a, _ = ts.Create("a", state)
 	test.Equal(t, "a b c a c c ", s)
 
 	ts.Unsubscribe(subB)
-	ts.Remove("a")
+	ts.Remove(a)
 	test.Equal(t, "a b c a c c c ", s)
 
 	ts.Unsubscribe(subC)
-	ts.Create("a", 0)
+	a, _ = ts.Create("a", state)
 	test.Equal(t, "a b c a c c c ", s)
 
 	ts.Unsubscribe(subB)
-	ts.Remove("a")
+	ts.Remove(a)
 	test.Equal(t, "a b c a c c c ", s)
 
 }

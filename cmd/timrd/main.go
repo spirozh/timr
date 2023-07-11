@@ -15,25 +15,20 @@ func main() {
 	ts := timer.TimerService(time.Now)
 
 	// debugging state
-	sub := ts.Subscribe(func(_ timr.TimrEventType, _ string, _ timr.Timer) {
-
-		var b bytes.Buffer
-		list := ts.List()
-		fmt.Fprintf(&b, "timers: %v\n", list)
-		for _, name := range list {
-			t, err := ts.Get(name)
-			if err != nil {
-				fmt.Fprintf(&b, " ! %v: %v\n", name, err)
-				continue
-			}
-			fmt.Fprintf(&b, " * %v: %#v\n", name, t.State())
-		}
-		fmt.Fprintln(&b)
-
-		timr.INFO("current timerServer state:\n", b.String())
-	})
+	sub := ts.Subscribe(func(_ timr.TimrEventType, _ int, _ string, _ timr.Timer) { logState(ts) })
 
 	http.Serve(ts)
 
 	ts.Unsubscribe(sub)
+}
+
+func logState(ts timr.TimerService) {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "timers:\n")
+	ts.ForAll(func(id int, name string, timer timr.TimerState) {
+		fmt.Fprintf(&b, " * %d) '%s': %v\n", id, name, timer)
+	})
+	fmt.Fprintln(&b)
+
+	timr.INFO("current timerServer state:\n", b.String())
 }

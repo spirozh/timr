@@ -3,13 +3,12 @@ package timr
 import (
 	"log"
 	"os"
-	"time"
 )
 
 type TimerState struct {
-	Duration  int64 `json:"duration"`
-	Running   bool  `json:"running"`
-	Remaining int64 `json:"remaining"`
+	Duration  *int  `json:"duration"`
+	Running   *bool `json:"running"`
+	Remaining *int  `json:"remaining"`
 }
 
 type TimerMessage struct {
@@ -19,16 +18,15 @@ type TimerMessage struct {
 
 type Timer interface {
 	State() TimerState
-	Pause()
-	Resume()
-	Reset()
+	Set(state TimerState)
 }
 
 type TimerService interface {
-	Create(name string, duration time.Duration) error
-	List() []string
-	Get(name string) (Timer, error)
-	Remove(name string) error
+	Create(name string, state TimerState) (id int, err error)
+	Update(id int, name string, state TimerState) error
+	ForAll(func(id int, name string, state TimerState))
+	Get(id int) (string, Timer, error)
+	Remove(id int) error
 
 	Subscribe(callback EventCallback) *EventSubscription
 	Unsubscribe(*EventSubscription)
@@ -38,25 +36,28 @@ type EventSubscription struct {
 	Callback EventCallback
 }
 
-type EventCallback func(eventType TimrEventType, name string, timer Timer)
+type EventCallback func(eventType TimrEventType, id int, name string, timer Timer)
 
 type TimrEventType int
 
 const (
 	_ TimrEventType = iota
-	Created
-	Paused
-	Resumed
-	Reset
-	Removed
-
-	timrEventNames string = "UnknownCreatedPausedResumedResetRemoved"
+	TimrEventCreated
+	TimrEventSet
+	TimrEventRemoved
 )
 
-var timrEventNameOffsets = [...]int{0, 7, 14, 20, 27, 32, 39}
-
 func (t TimrEventType) String() string {
-	return timrEventNames[timrEventNameOffsets[t]:timrEventNameOffsets[t+1]]
+	switch t {
+	case TimrEventCreated:
+		return "TimrEventCreated"
+	case TimrEventSet:
+		return "TimrEventSet"
+	case TimrEventRemoved:
+		return "TimrEventRemoved"
+	default:
+		return "<unknown TimrEventType>"
+	}
 }
 
 // errors
@@ -67,7 +68,6 @@ func (e timrError) Error() string {
 }
 
 const (
-	ErrTimerExists timrError = "Timer Exists"
 	ErrNoSuchTimer timrError = "No Such Timer"
 )
 

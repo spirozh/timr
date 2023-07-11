@@ -10,41 +10,6 @@ import (
 
 func noNotify(timr.TimrEventType, timr.Timer) {}
 
-func TestTimerReset(t *testing.T) {
-	now := time.Now().UTC()
-	clock := func() time.Time { return now }
-	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
-
-	timer.Resume()
-
-}
-
-func TestTimerPauseResumeReset(t *testing.T) {
-	now := time.Now().UTC()
-	clock := func() time.Time { return now }
-	timer := &timer{clock, noNotify, dur("01:00"), nil, 0}
-
-	timer.Resume()
-	advance(&now, "00:05")
-	timer.Pause()
-	shouldRemain(t, timer, "00:55")
-	advance(&now, "00:05")
-	shouldRemain(t, timer, "00:55")
-	timer.Resume()
-	advance(&now, "00:55")
-	shouldRemain(t, timer, "00:00")
-	timer.Pause()
-	advance(&now, "01:00")
-	shouldRemain(t, timer, "00:00")
-	timer.Resume()
-	advance(&now, "01:00")
-	shouldRemain(t, timer, "-01:00")
-	timer.Reset()
-	shouldRemain(t, timer, "01:00")
-	advance(&now, "00:30")
-	shouldRemain(t, timer, "00:30")
-}
-
 func TestTimerRemaining(t *testing.T) {
 	t0 := time.Now().UTC()
 	tMinus1 := t0.Add(-time.Minute)
@@ -86,44 +51,40 @@ func TestTimerNotifications(t *testing.T) {
 	}
 
 	testTimer := &timer{time.Now, nil, time.Minute, nil, 0}
-	ensure(testTimer.Pause, 0, nil)
-	ensure(testTimer.Resume, 0, nil)
-	ensure(testTimer.Reset, 0, nil)
+	ensure(func() { testTimer.Set(timr.TimerState{}) }, 0, nil)
 
 	(*testTimer).notify = func(e timr.TimrEventType, t timr.Timer) {
 		calledEventType, calledTimer = e, t.(*timer)
 	}
-	ensure(testTimer.Pause, timr.Paused, testTimer)
-	ensure(testTimer.Resume, timr.Resumed, testTimer)
-	ensure(testTimer.Reset, timr.Reset, testTimer)
+	ensure(func() { testTimer.Set(timr.TimerState{}) }, timr.TimrEventSet, testTimer)
 }
 
-func mmss(s string) time.Time {
-	t, _ := time.Parse("04:05", s)
-	return t
-}
+// func mmss(s string) time.Time {
+// 	t, _ := time.Parse("04:05", s)
+// 	return t
+// }
 
-func dur(s string) time.Duration {
-	return mmss(s).Sub(mmss("00:00"))
-}
+// func dur(s string) time.Duration {
+// 	return mmss(s).Sub(mmss("00:00"))
+// }
 
-func str(d time.Duration) string {
-	f := "04:05"
-	if d < 0 {
-		d, f = -d, "-"+f
-	}
-	return mmss("00:00").Add(d).Format(f)
-}
+// func str(d time.Duration) string {
+// 	f := "04:05"
+// 	if d < 0 {
+// 		d, f = -d, "-"+f
+// 	}
+// 	return mmss("00:00").Add(d).Format(f)
+// }
 
-func advance(now *time.Time, s string) {
-	*now = now.Add(dur(s))
-}
+// func advance(now *time.Time, s string) {
+// 	*now = now.Add(dur(s))
+// }
 
-func shouldRemain(t *testing.T, timer timr.Timer, s string) {
-	t.Helper()
-	ts := timer.State()
-	actual := str(time.Duration(ts.Remaining) * time.Millisecond)
-	if actual != s {
-		t.Errorf("time remaining should be: %#v, was: %#v", s, actual)
-	}
-}
+// func shouldRemain(t *testing.T, timer timr.Timer, s string) {
+// 	t.Helper()
+// 	ts := timer.State()
+// 	actual := str(time.Duration(*ts.Remaining) * time.Millisecond)
+// 	if actual != s {
+// 		t.Errorf("time remaining should be: %#v, was: %#v", s, actual)
+// 	}
+// }

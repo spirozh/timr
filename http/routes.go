@@ -2,7 +2,6 @@ package http
 
 import (
 	"io"
-	"io/fs"
 	"net/http"
 
 	"github.com/spirozh/timr"
@@ -12,27 +11,15 @@ import (
 func routes(ts timr.TimerService) http.Handler {
 	m := http.NewServeMux()
 
-	FileServer(m, "/", html.FS)
-	Selma(m, "/selma/")
-	APIRoutes(m, "/api/", ts) // everything under "/api"
+	// register selma
+	m.HandleFunc("/selma/", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "hello selma!!\n") })
+
+	// register file server
+	fileServer := http.FileServer(http.FS(html.FS))
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fileServer.ServeHTTP(w, r) })
+
+	// register api routes
+	APIRoutes(m, "/api/timer/", ts) // register api routes for timer service
 
 	return m
-}
-
-func FileServer(m *http.ServeMux, path string, fsys fs.FS) {
-	timr.INFO("registering FileServer at:\t\t", path)
-
-	fileServer := http.FileServer(http.FS(fsys))
-
-	m.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		fileServer.ServeHTTP(w, r)
-	})
-}
-
-func Selma(m *http.ServeMux, path string) {
-	timr.INFO("registering Selma at:\t\t", path)
-
-	m.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "hello selma!!\n")
-	})
 }

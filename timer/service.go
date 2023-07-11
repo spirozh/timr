@@ -9,11 +9,13 @@ import (
 
 type timerService struct {
 	clock  func() time.Time
+	lastID int
 	timers []timerEntry
 
 	subscribers []*timr.EventSubscription
 }
 type timerEntry struct {
+	id    int
 	name  string
 	timer timr.Timer
 }
@@ -55,64 +57,73 @@ func (ts *timerService) Unsubscribe(sub *timr.EventSubscription) {
 	ts.subscribers = ts.subscribers[:len(ts.subscribers)-1]
 }
 
-func (ts *timerService) notify(t timr.TimrEventType, name string, timer timr.Timer) {
+func (ts *timerService) notify(t timr.TimrEventType, id int, name string, timer timr.Timer) {
 	for _, sub := range ts.subscribers {
-		sub.Callback(t, name, timer)
+		sub.Callback(t, id, name, timer)
 	}
 }
 
-func (ts *timerService) Create(name string, duration time.Duration) error {
-	for _, te := range ts.timers {
-		if te.name == name {
-			return timr.ErrTimerExists
-		}
-	}
+func (ts *timerService) Create(name string, state timr.TimerState) (int, error) {
+	ts.lastID++
+
+	var id = ts.lastID
 
 	t := &timer{
 		clock: ts.clock,
 		notify: func(e timr.TimrEventType, t timr.Timer) {
-			ts.notify(e, name, t)
+			ts.notify(e, id, name, t)
 		},
-		duration: duration,
+		duration: time.Millisecond * time.Duration(*state.Duration),
 	}
-	ts.timers = append(ts.timers, timerEntry{name, t})
 
-	ts.notify(timr.Created, name, t)
+	if state.Remaining != nil {
+		t.elapsed = t.duration - time.Millisecond*time.Duration(*state.Remaining)
+	}
+
+	if state.Running != nil && *state.Running {
+		now := ts.clock()
+		t.start = &now
+	}
+
+	ts.timers = append(ts.timers, timerEntry{ts.lastID, name, t})
+
+	ts.notify(timr.TimrEventCreated, id, name, t)
+	return ts.lastID, nil
+}
+
+func (ts *timerService) Update(id int, name string, state timr.TimerState) error {
+	// TODO: update timer ...
 	return nil
 }
 
-func (ts *timerService) Get(name string) (timr.Timer, error) {
+func (ts *timerService) ForAll(f func(id int, name string, state timr.TimerState)) {
 	for _, te := range ts.timers {
-		if te.name == name {
-			return te.timer, nil
+		f(te.id, te.name, te.timer.State())
+	}
+}
+
+func (ts *timerService) Get(id int) (string, timr.Timer, error) {
+	for _, te := range ts.timers {
+		if te.id == id {
+			return te.name, te.timer, nil
 		}
 	}
 
-	return nil, timr.ErrNoSuchTimer
+	return "", nil, timr.ErrNoSuchTimer
 }
 
-func (ts *timerService) Remove(name string) error {
+func (ts *timerService) Remove(id int) error {
 	for i, te := range ts.timers {
-		if te.name == name {
+		if te.id == id {
 			for ; i < len(ts.timers)-1; i++ {
 				ts.timers[i] = ts.timers[i+1]
 			}
 			ts.timers = ts.timers[:len(ts.timers)-1]
 
-			ts.notify(timr.Removed, name, nil)
+			ts.notify(timr.TimrEventRemoved, id, te.name, nil)
 			return nil
 		}
 	}
 
 	return timr.ErrNoSuchTimer
-}
-
-func (ts *timerService) List() []string {
-	names := []string{}
-
-	for _, te := range ts.timers {
-		names = append(names, te.name)
-	}
-
-	return names
 }
