@@ -15,11 +15,14 @@ func routes(ts timr.TimerService) http.Handler {
 	m.HandleFunc("/selma/", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "hello selma!!\n") })
 
 	// register file server
-	fileServer := http.FileServer(http.FS(html.FS))
-	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fileServer.ServeHTTP(w, r) })
+	m.Handle("/", http.FileServer(http.FS(html.FS)))
 
 	// register api routes
-	APIRoutes(m, "/api/timer/", ts) // register api routes for timer service
+	apiMux := http.NewServeMux()
+	m.Handle("/api/", apiMux)
+
+	apiMux.Handle("/api/timer/", newTimerHandler("/api/timer/", ts)) // register api routes for timer service
+	apiMux.HandleFunc("/api/timer/sse", SSE(ts))
 
 	return m
 }
