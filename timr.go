@@ -11,11 +11,6 @@ type TimerState struct {
 	Remaining *int  `json:"remaining"`
 }
 
-type TimerMessage struct {
-	Name  string     `json:"name"`
-	State TimerState `json:"state"`
-}
-
 type Timer interface {
 	State() TimerState
 	Set(state TimerState)

@@ -75,6 +75,7 @@ func (th *TimerHandler) createTimer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	w.Write(res)
 }
 
@@ -91,20 +92,11 @@ func (th *TimerHandler) listTimers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write(res)
-}
-
-func (th *TimerHandler) getTimer(w http.ResponseWriter, r *http.Request) {
-	// get the context values
-	id, name, timer := getIdNameTimer(r.Context())
-	state := timer.State()
-	b, err := json.Marshal(timerMessage{&id, &name, &state})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	w.Header().Add("Content-Type", "application/json")
-	w.Write(b)
+	w.Header().Add("Content-Length", strconv.Itoa(len(res)))
+	w.WriteHeader(http.StatusOK)
+
+	w.Write(res)
 }
 
 func getIdNameTimer(ctx context.Context) (id int, name string, timer timr.Timer) {
@@ -121,6 +113,24 @@ func getIdNameTimer(ctx context.Context) (id int, name string, timer timr.Timer)
 	}
 
 	return
+}
+
+func (th *TimerHandler) getTimer(w http.ResponseWriter, r *http.Request) {
+	// get the context values
+	id, name, timer := getIdNameTimer(r.Context())
+	state := timer.State()
+	res, err := json.Marshal(timerMessage{&id, &name, &state})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Content-Length", strconv.Itoa(len(res)))
+	w.WriteHeader(http.StatusOK)
+
+	if r.Method == http.MethodGet {
+		w.Write(res)
+	}
 }
 
 func (th *TimerHandler) updateTimer(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +164,13 @@ func (th *TimerHandler) updateTimer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Write(res)
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Content-Length", strconv.Itoa(len(res)))
+	w.WriteHeader(http.StatusOK)
+
+	if r.Method == http.MethodGet {
+		w.Write(res)
+	}
 }
 
 func (th *TimerHandler) deleteTimer(w http.ResponseWriter, r *http.Request) {
@@ -164,7 +180,7 @@ func (th *TimerHandler) deleteTimer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(204)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type timerContextKey struct{}
@@ -198,7 +214,7 @@ func (th TimerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(idStr)
 
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -270,7 +286,7 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 		//  {'name': {'running': bool, 'remaining': milliseconds}}
 		// or (for delete)
 		//  {'name': null}
-		mu := sync.Mutex{}
+		mu := sync.Mutex{} // TODO bogus
 		tsEventHandler := func(eventType timr.TimrEventType, id int, name string, timer timr.Timer) {
 			mu.Lock()
 			defer mu.Unlock()
@@ -291,8 +307,8 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 func outputTimer(w io.Writer, ts timr.TimerService, id int) {
 	name, t, _ := ts.Get(id)
 	state := t.State()
-	msg := timr.TimerMessage{Name: name, State: state}
-	j, err := json.Marshal(msg)
+
+	j, err := json.Marshal(timerMessage{Id: &id, Name: &name, State: &state})
 	if err == nil {
 		output(w, string(j))
 	}
@@ -316,7 +332,7 @@ func sseSetup(w http.ResponseWriter, r *http.Request) (flusher http.Flusher, ok 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // TODO: is this needed??
 	flusher.Flush()
 	return
 }
