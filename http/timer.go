@@ -79,7 +79,19 @@ func (th *TimerHandler) createTimer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TimerHandler) listTimers(w http.ResponseWriter, r *http.Request) {
-	// list timers
+	msgs := []timerMessage{}
+
+	th.TimerService.ForAll(func(id int, name string, state timr.TimerState) {
+		msgs = append(msgs, timerMessage{&id, &name, &state})
+	})
+
+	res, err := json.Marshal(msgs)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(res)
 }
 
 func (th *TimerHandler) getTimer(w http.ResponseWriter, r *http.Request) {
