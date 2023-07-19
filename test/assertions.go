@@ -8,14 +8,14 @@ import (
 func NotEqual(t *testing.T, notExpected, actual any) {
 	t.Helper()
 	if actual == notExpected {
-		t.Errorf("Failure\nexpected value not to be: %v", notExpected)
+		t.Errorf("Failure\nexpected value not to be: %#v", notExpected)
 	}
 }
 
 func Equal(t *testing.T, expected, actual any) {
 	t.Helper()
 	if expected != actual {
-		t.Errorf("Failure\nexpected: %v\nactual  : %v", expected, actual)
+		t.Errorf("Failure\nexpected: %#v\nactual  : %#v", expected, actual)
 	}
 }
 
