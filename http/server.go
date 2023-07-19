@@ -15,9 +15,11 @@ import (
 func Serve(ts timr.TimerService) {
 	defer fmt.Println("quitting serve")
 
+	sseDone := make(chan any)
+
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: routes(ts),
+		Handler: routes(ts, sseDone),
 	}
 
 	go func() {
@@ -26,6 +28,9 @@ func Serve(ts timr.TimerService) {
 		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
+
+		// shutdown open SSE connections
+		close(sseDone)
 	}()
 
 	waitForShutdown(srv)

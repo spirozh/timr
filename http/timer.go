@@ -257,7 +257,7 @@ func timerBody(r *http.Request) (timerMessage, error) {
 }
 
 // SSE handles /api/sse/
-func SSE(ts timr.TimerService) http.HandlerFunc {
+func SSE(ts timr.TimerService, sseDone chan any) http.HandlerFunc {
 	// TODO: handle 405s
 
 	count := 0
@@ -297,7 +297,11 @@ func SSE(ts timr.TimerService) http.HandlerFunc {
 		sub := ts.Subscribe(tsEventHandler)
 		defer ts.Unsubscribe(sub)
 
-		<-r.Context().Done()
+		// wait for context done or sseDone
+		select {
+		case <-r.Context().Done():
+		case <-sseDone:
+		}
 
 		timr.INFO("ending SSE handler")
 	}

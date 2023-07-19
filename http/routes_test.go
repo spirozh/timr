@@ -54,7 +54,7 @@ func Test_Routes(t *testing.T) {
 	}
 
 	ts := timer.TimerService(func() time.Time { return time.Time{} })
-	routes := routes(ts)
+	routes := routes(ts, nil)
 
 	for i, testCase := range testCases {
 		fmt.Printf("testcase: %d) %#v\n", i, testCase)

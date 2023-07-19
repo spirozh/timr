@@ -8,7 +8,7 @@ import (
 	"github.com/spirozh/timr/html"
 )
 
-func routes(ts timr.TimerService) http.Handler {
+func routes(ts timr.TimerService, sseDone chan any) http.Handler {
 	m := http.NewServeMux()
 
 	// register selma
@@ -33,7 +33,7 @@ func routes(ts timr.TimerService) http.Handler {
 	m.Handle("/api/", apiMux)
 
 	apiMux.Handle("/api/timer/", newTimerHandler("/api/timer/", ts))
-	apiMux.HandleFunc("/api/timer/sse", SSE(ts))
+	apiMux.HandleFunc("/api/timer/sse", SSE(ts, sseDone))
 
 	return m
 }
