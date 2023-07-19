@@ -8,21 +8,21 @@ import (
 func NotEqual(t *testing.T, notExpected, actual any) {
 	t.Helper()
 	if actual == notExpected {
-		t.Errorf("Failure\nexpected value not to be: %#v", notExpected)
+		t.Fatalf("Failure\nexpected value not to be: %#v", notExpected)
 	}
 }
 
 func Equal(t *testing.T, expected, actual any) {
 	t.Helper()
 	if expected != actual {
-		t.Errorf("Failure\nexpected: %#v\nactual  : %#v", expected, actual)
+		t.Fatalf("Failure\nexpected: %#v\nactual  : %#v", expected, actual)
 	}
 }
 
 func ElementsMatch(t *testing.T, expected, actual []string) {
 	t.Helper()
 	if !slicesEqual(expected, actual) {
-		t.Errorf("Failure:\nexpected: %#v\nactual  : %#v", expected, actual)
+		t.Fatalf("Failure:\nexpected: %#v\nactual  : %#v", expected, actual)
 	}
 }
 
