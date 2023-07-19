@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/spirozh/timr"
 )
@@ -285,11 +284,7 @@ func SSE(ts timr.TimerService, sseDone chan any) http.HandlerFunc {
 		//  {'name': {'running': bool, 'remaining': milliseconds}}
 		// or (for delete)
 		//  {'name': null}
-		mu := sync.Mutex{} // TODO bogus
 		tsEventHandler := func(eventType timr.TimrEventType, id int, name string, timer timr.Timer) {
-			mu.Lock()
-			defer mu.Unlock()
-
 			outputTimer(w, ts, id)
 
 			flusher.Flush()
