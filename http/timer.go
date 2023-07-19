@@ -52,7 +52,7 @@ func (th *TimerHandler) createTimer(w http.ResponseWriter, r *http.Request) {
 	//
 	// receives {"name":"zzz","state":{"duration":1,"remaining":1,"running":true}}
 	// emits {"id":1,"name":"zzz","state":{"duration":1,"remaining":1,"running":true}}
-	createReq, err := timerBody(w, r)
+	createReq, err := timerBody(r)
 	if err != nil {
 		return
 	}
@@ -140,7 +140,7 @@ func (th *TimerHandler) updateTimer(w http.ResponseWriter, r *http.Request) {
 	// emits {"id":1,"name":"mmm","state":{"duration":1,"remaining":5,"running":false}}
 	id, name, timer := getIdNameTimer(r.Context())
 
-	updateReq, err := timerBody(w, r)
+	updateReq, err := timerBody(r)
 	if err != nil || updateReq.Id == nil || *updateReq.Id != id {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -247,7 +247,7 @@ func (th TimerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handle405(th.noIdMethods, w)
 }
 
-func timerBody(w http.ResponseWriter, r *http.Request) (timerMessage, error) {
+func timerBody(r *http.Request) (timerMessage, error) {
 	var (
 		msg timerMessage
 		b   bytes.Buffer
