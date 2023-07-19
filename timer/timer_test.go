@@ -58,33 +58,3 @@ func TestTimerNotifications(t *testing.T) {
 	}
 	ensure(func() { testTimer.Set(timr.TimerState{}) }, timr.TimrEventSet, testTimer)
 }
-
-// func mmss(s string) time.Time {
-// 	t, _ := time.Parse("04:05", s)
-// 	return t
-// }
-
-// func dur(s string) time.Duration {
-// 	return mmss(s).Sub(mmss("00:00"))
-// }
-
-// func str(d time.Duration) string {
-// 	f := "04:05"
-// 	if d < 0 {
-// 		d, f = -d, "-"+f
-// 	}
-// 	return mmss("00:00").Add(d).Format(f)
-// }
-
-// func advance(now *time.Time, s string) {
-// 	*now = now.Add(dur(s))
-// }
-
-// func shouldRemain(t *testing.T, timer timr.Timer, s string) {
-// 	t.Helper()
-// 	ts := timer.State()
-// 	actual := str(time.Duration(*ts.Remaining) * time.Millisecond)
-// 	if actual != s {
-// 		t.Errorf("time remaining should be: %#v, was: %#v", s, actual)
-// 	}
-// }
