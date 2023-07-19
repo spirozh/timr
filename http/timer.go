@@ -99,22 +99,6 @@ func (th *TimerHandler) listTimers(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
-func getIdNameTimer(ctx context.Context) (id int, name string, timer timr.Timer) {
-	var ok bool
-
-	if id, ok = ctx.Value(keyId).(int); !ok {
-		panic("id not in context")
-	}
-	if name, ok = ctx.Value(keyName).(string); !ok {
-		panic("name not in context")
-	}
-	if timer, ok = ctx.Value(keyTimer).(timr.Timer); !ok {
-		panic("name not in context")
-	}
-
-	return
-}
-
 func (th *TimerHandler) getTimer(w http.ResponseWriter, r *http.Request) {
 	// get the context values
 	id, name, timer := getIdNameTimer(r.Context())
@@ -191,6 +175,22 @@ var (
 	keyTimer = timerContextKey{}
 )
 
+func getIdNameTimer(ctx context.Context) (id int, name string, timer timr.Timer) {
+	var ok bool
+
+	if id, ok = ctx.Value(keyId).(int); !ok {
+		panic("id not in context")
+	}
+	if name, ok = ctx.Value(keyName).(string); !ok {
+		panic("name not in context")
+	}
+	if timer, ok = ctx.Value(keyTimer).(timr.Timer); !ok {
+		panic("name not in context")
+	}
+
+	return
+}
+
 func handle405(methodMap map[string]http.HandlerFunc, w http.ResponseWriter) {
 	var methodsAllowed []string
 
@@ -236,7 +236,6 @@ func (th TimerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		handle405(th.idMethods, w)
 		return
-
 	}
 
 	if handler, exists := th.noIdMethods[r.Method]; exists {
