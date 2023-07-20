@@ -28,15 +28,12 @@ func Serve(ts timr.TimerService) {
 		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
-
-		// shutdown open SSE connections
-		close(sseDone)
 	}()
 
-	waitForShutdown(srv)
+	waitForShutdown(srv, sseDone)
 }
 
-func waitForShutdown(srv *http.Server) {
+func waitForShutdown(srv *http.Server, sseDone chan any) {
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
@@ -44,6 +41,9 @@ func waitForShutdown(srv *http.Server) {
 
 	// Block until we receive our signal.
 	<-c
+
+	// Shutdown SSE connections
+	close(sseDone)
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
