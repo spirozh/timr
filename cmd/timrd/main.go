@@ -16,10 +16,9 @@ func main() {
 
 	// debugging state
 	sub := ts.Subscribe(func(_ timr.TimrEventType, _ int, _ string, _ timr.Timer) { logState(ts) })
+	defer ts.Unsubscribe(sub)
 
 	http.Serve(ts)
-
-	ts.Unsubscribe(sub)
 }
 
 func logState(ts timr.TimerService) {
