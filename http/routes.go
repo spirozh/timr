@@ -30,10 +30,11 @@ func routes(ts timr.TimerService, sseDone chan any) http.Handler {
 
 	// register api routes
 	apiMux := http.NewServeMux()
-	m.Handle("/api/", apiMux)
 
-	apiMux.Handle("/api/timer/", newTimerHandler("/api/timer/", ts))
-	apiMux.HandleFunc("/api/timer/sse", SSE(ts, sseDone))
+	apiMux.Handle("/api/timers/", newTimerHandler("/api/timers/", ts))
+	apiMux.HandleFunc("/api/timers/sse", SSE(ts, sseDone))
+
+	m.Handle("/api/", apiMux)
 
 	return m
 }
