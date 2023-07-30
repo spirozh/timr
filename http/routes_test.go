@@ -14,7 +14,7 @@ import (
 	"github.com/spirozh/timr/timer"
 )
 
-type selmaTestCase struct {
+type fsAndselmaTestCase struct {
 	method       string
 	path         string
 	requestBody  string
@@ -28,7 +28,7 @@ func Test_Routes(t *testing.T) {
 	test.Equal(t, nil, err)
 	index, _ := io.ReadAll(indexR)
 
-	testCases := []selmaTestCase{
+	testCases := []fsAndselmaTestCase{
 		// filesystem
 		{http.MethodGet, "/", "", http.StatusOK, string(index)},
 		{http.MethodPost, "/", "ignored", http.StatusOK, string(index)},  // All methods act like GET
@@ -75,7 +75,11 @@ func Test_Routes(t *testing.T) {
 		defer res.Body.Close()
 
 		data, err := io.ReadAll(res.Body)
-		test.Equal(t, nil, err)
-		test.Equal(t, testCase.responseBody, string(data))
+		if err != nil {
+			t.Errorf("error: %s", err)
+		}
+		if testCase.responseBody != string(data) {
+			t.Errorf("responseBody: expected %#v, got %#v", testCase.responseBody, string(data))
+		}
 	}
 }
