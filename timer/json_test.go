@@ -18,7 +18,7 @@ func Test_JSONMarshal(t *testing.T) {
 		{
 			name:  "zero timer",
 			timer: New(),
-			json:  `{"name":"","duration":0,"started":"","elapsed":0}`,
+			json:  `{"name":"","duration":0,"started":null,"elapsed":0}`,
 		},
 		{
 			name:  "zero started",
@@ -28,7 +28,7 @@ func Test_JSONMarshal(t *testing.T) {
 		{
 			name:  "nil started",
 			timer: New(Name("bar"), Duration(time.Minute), Started(nil), Elapsed(time.Second)),
-			json:  `{"name":"bar","duration":60000,"started":"","elapsed":1000}`,
+			json:  `{"name":"bar","duration":60000,"started":null,"elapsed":1000}`,
 		},
 	}
 
@@ -61,12 +61,12 @@ func Test_JSONUnmarshal(t *testing.T) {
 		},
 		{
 			name:  "started null",
-			json:  `{"name":"bar","duration":60000,"started":"","elapsed":1000}`,
+			json:  `{"name":"bar","duration":60000,"started":null,"elapsed":1000}`,
 			timer: New(Name("bar"), Duration(time.Minute), Elapsed(time.Second)),
 		},
 		{
 			name:         "bad json",
-			json:         `{"name":"bar","duration":60000,"started":"","elapsed":1000`,
+			json:         `{"name":"bar","duration":60000,"started":null,"elapsed":1000`,
 			timer:        New(),
 			unmarshalErr: &json.SyntaxError{},
 		},

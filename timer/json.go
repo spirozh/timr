@@ -6,18 +6,19 @@ import (
 )
 
 type timerAux struct {
-	Name     string `json:"name"`
-	Duration int    `json:"duration"`
-	Started  string `json:"started"`
-	Elapsed  int    `json:"elapsed"`
+	Name     string  `json:"name"`
+	Duration int     `json:"duration"`
+	Started  *string `json:"started"`
+	Elapsed  int     `json:"elapsed"`
 }
 
 const timeFormat = "2006-01-02T15:04:05.0000"
 
 func (t timer) MarshalJSON() ([]byte, error) {
-	started := ""
+	var started *string
 	if t.started != nil {
-		started = t.started.Format(timeFormat)
+		timeStr := t.started.Format(timeFormat)
+		started = &timeStr
 	}
 	aux := &timerAux{
 		Name:     t.Name(),
@@ -35,8 +36,8 @@ func (t *timer) UnmarshalJSON(data []byte) error {
 	}
 
 	var started *time.Time
-	if aux.Started != "" {
-		auxTime, err := time.Parse(timeFormat, aux.Started)
+	if aux.Started != nil {
+		auxTime, err := time.Parse(timeFormat, *aux.Started)
 		if err != nil {
 			return err
 		}
