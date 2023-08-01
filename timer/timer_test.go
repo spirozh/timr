@@ -1,15 +1,14 @@
-package timr_test
+package timer_test
 
 import (
-	"fmt"
-	"spirozh/timr"
+	"spirozh/timr/timer"
 	"testing"
 	"time"
 )
 
 func Test_TimerElapsed(t *testing.T) {
 	var zero, now time.Time
-	testTimer := timr.New("foo")
+	testTimer := timer.New()
 
 	testElapsed := func(expected time.Duration) {
 		elapsed := testTimer.Elapsed(now)
@@ -40,31 +39,4 @@ func Test_TimerElapsed(t *testing.T) {
 	now = zero.Add(4 * time.Second)
 	testTimer.Stop(now) // 4s. multiple stops don't change anything
 	testElapsed(time.Second)
-}
-
-func Test_TimerEncoding(t *testing.T) {
-	testTimer := timr.New("timer")
-	var now time.Time
-
-	t.Run("stopped timer", func(t *testing.T) {
-		encodedTimer := testTimer.ToString()
-		decodedTimer := timr.FromString(encodedTimer)
-		if testTimer.Elapsed(now) != decodedTimer.Elapsed(now) {
-			t.Fatal("timers don't really decode right")
-		}
-	})
-
-	t.Run("running timer", func(t *testing.T) {
-		testTimer.Start(now)
-
-		encodedTimer := testTimer.ToString()
-		fmt.Println(encodedTimer)
-		decodedTimer := timr.FromString(encodedTimer)
-		fmt.Println(decodedTimer.ToString())
-
-		now = now.Add(time.Minute)
-		if testTimer.Elapsed(now) != decodedTimer.Elapsed(now) {
-			t.Fatal("timers don't really decode right")
-		}
-	})
 }
