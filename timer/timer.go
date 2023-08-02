@@ -1,8 +1,18 @@
 package timer
 
 import (
+	"fmt"
 	"time"
 )
+
+type Timer interface {
+	Config(options ...timerOption) []timerOption
+	Name() string
+	Elapsed(time.Time) time.Duration
+	Remaining(time.Time) time.Duration
+	Start(time.Time)
+	Stop(time.Time)
+}
 
 type timer struct {
 	name     string
@@ -11,10 +21,18 @@ type timer struct {
 	elapsed  time.Duration
 }
 
-func New(options ...timerOption) timer {
+func New(options ...timerOption) Timer {
 	t := timer{}
 	t.Config(options...)
-	return t
+	return &t
+}
+
+func (t timer) String() string {
+	s := "nil"
+	if t.started != nil {
+		s = fmt.Sprintf(`"%s"`, t.started.Format(timeFormat))
+	}
+	return fmt.Sprintf(`<timer "%s" duration:%s started:%s elapsed:%s>`, t.name, t.duration, s, t.elapsed)
 }
 
 func (t timer) Name() string {
@@ -27,6 +45,10 @@ func (t timer) Elapsed(now time.Time) time.Duration {
 		e += now.Sub(*t.started)
 	}
 	return e
+}
+
+func (t timer) Remaining(now time.Time) time.Duration {
+	return t.duration - t.Elapsed(now)
 }
 
 func (t *timer) Start(now time.Time) {
