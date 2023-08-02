@@ -1,92 +1,118 @@
-package timer
+package timer_test
 
 import (
+	"encoding/json"
+	"spirozh/timr/timer"
 	"testing"
 	"time"
 )
 
 func TestOptions(t *testing.T) {
 	t.Run("name", func(t *testing.T) {
-		timer := New(Name("foo"))
-		if timer.Name() != "foo" {
-			t.Fatal("Name set failed")
+		timr := timer.New(timer.Name("foo"))
+		if timr.Name() != "foo" {
+			t.Fatal(
+				"Name set failed",
+				"\nexpected: \"foo\"",
+				"\n  actual: ", timr.Name(),
+			)
 		}
 
-		oldConfig := timer.Config(Name("bar"))
-		if timer.Name() != "bar" {
-			t.Fatal("Name option failed")
+		restoreConfig := timr.Config(timer.Name("bar"))
+		if timr.Name() != "bar" {
+			t.Fatal(
+				"Name option failed",
+				"\nexpected: \"bar\"",
+				"\n  actual: ", timr.Name(),
+			)
 		}
 
-		timer.Config(oldConfig...)
-		if timer.Name() != "foo" {
-			t.Fatal("Name reset failed")
+		timr.Config(restoreConfig...)
+		if timr.Name() != "foo" {
+			t.Fatal(
+				"Name restore failed",
+				"\nexpected: \"foo\"",
+				"\n  actual: ", timr.Name(),
+			)
 		}
 	})
 
 	t.Run("duration", func(t *testing.T) {
-		timer := New(Duration(0))
-		if timer.duration != 0 {
-			t.Fatal("Duration set failed")
+		timr := timer.New(timer.Duration(0))
+		if actual := timr.Remaining(time.Time{}); actual != 0 {
+			t.Fatal(
+				"Duration set failed",
+				"\nexpected: ", 0,
+				"\n  actual: ", actual,
+			)
 		}
 
-		oldConfig := timer.Config(Duration(time.Hour))
-		if timer.duration != time.Hour {
-			t.Fatal("Duration option failed")
+		restoreConfig := timr.Config(timer.Duration(time.Hour))
+		if actual := timr.Remaining(time.Time{}); actual != time.Hour {
+			t.Fatal(
+				"Duration option failed",
+				"\nexpected: ", time.Hour,
+				"\n  actual: ", actual,
+			)
 		}
 
-		timer.Config(oldConfig...)
-		if timer.duration != 0 {
-			t.Fatal("Duration reset failed")
+		timr.Config(restoreConfig...)
+		if actual := timr.Remaining(time.Time{}); actual != 0 {
+			t.Fatal(
+				"Duration restore failed",
+				"\nexpected: ", 0,
+				"\n  actual: ", actual,
+			)
 		}
 	})
 
 	t.Run("started", func(t *testing.T) {
-		timer := New(Started(nil))
-		if timer.started != nil {
+		timr := timer.New(timer.Started(&time.Time{}))
+		if timr.Elapsed(time.Time{}.Add(time.Minute)) != time.Minute {
 			t.Fatal("Started set failed")
 		}
 
-		oldConfig := timer.Config(Started(&time.Time{}))
-		if *timer.started != (time.Time{}) {
+		restoreConfig := timr.Config(timer.Started(nil))
+		if timr.Elapsed(time.Time{}.Add(time.Minute)) != 0 {
 			t.Fatal("Started option failed")
 		}
 
-		timer.Config(oldConfig...)
-		if timer.started != nil {
-			t.Fatal("Started reset failed")
+		timr.Config(restoreConfig...)
+		if timr.Elapsed(time.Time{}.Add(time.Minute)) != time.Minute {
+			t.Fatal("Started restore failed")
 		}
 	})
 
 	t.Run("elapsed", func(t *testing.T) {
-		timer := New(Elapsed(0))
-		if timer.elapsed != 0 {
-			t.Fatal("Duration set failed")
+		timr := timer.New(timer.Elapsed(time.Hour))
+		if actual := timr.Remaining(time.Time{}); actual != -time.Hour {
+			t.Fatal("Elapsed set failed: ", actual)
 		}
 
-		oldConfig := timer.Config(Elapsed(time.Hour))
-		if timer.elapsed != time.Hour {
+		restoreConfig := timr.Config(timer.Elapsed(0))
+		if timr.Remaining(time.Time{}) != 0 {
 			t.Fatal("Elapsed option failed")
 		}
 
-		timer.Config(oldConfig...)
-		if timer.elapsed != 0 {
-			t.Fatal("Elapsed reset failed")
+		timr.Config(restoreConfig...)
+		if actual := timr.Remaining(time.Time{}); actual != -time.Hour {
+			t.Fatal("Elapsed restore failed: ", actual)
 		}
 	})
 
 	t.Run("config", func(t *testing.T) {
-		now := time.Time{}
-		timer := New(Name("foo"), Duration(time.Hour), Started(&now), Elapsed(time.Minute))
-		b0, _ := timer.MarshalJSON()
+		timr := timer.New(timer.Name("foo"), timer.Duration(time.Hour), timer.Started(&time.Time{}), timer.Elapsed(time.Minute))
 
-		oldConfig := timer.Config(Name("bar"), Duration(time.Minute), Started(nil), Elapsed(time.Second))
-		b1, _ := timer.MarshalJSON()
+		b0, _ := json.Marshal(timr)
+
+		oldConfig := timr.Config(timer.Name("bar"), timer.Duration(time.Minute), timer.Started(nil), timer.Elapsed(time.Second))
+		b1, _ := json.Marshal(timr)
 		if string(b0) == string(b1) {
 			t.Fatal("setting config failed")
 		}
 
-		timer.Config(oldConfig...)
-		b2, _ := timer.MarshalJSON()
+		timr.Config(oldConfig...)
+		b2, _ := json.Marshal(timr)
 		if string(b0) != string(b2) {
 			t.Fatal("restoring config failed")
 		}
