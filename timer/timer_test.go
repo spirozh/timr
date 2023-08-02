@@ -1,6 +1,7 @@
 package timer_test
 
 import (
+	"fmt"
 	"spirozh/timr/timer"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ func Test_TimerElapsed(t *testing.T) {
 	testTimer := timer.New()
 
 	testElapsed := func(expected time.Duration) {
+		t.Helper()
 		elapsed := testTimer.Elapsed(now)
 		if elapsed != expected {
 			t.Fatal("expected: ", expected, ", was: ", elapsed)
@@ -39,4 +41,22 @@ func Test_TimerElapsed(t *testing.T) {
 	now = zero.Add(4 * time.Second)
 	testTimer.Stop(now) // 4s. multiple stops don't change anything
 	testElapsed(time.Second)
+}
+
+func Test_TimerString(t *testing.T) {
+	testCases := []struct {
+		timr timer.Timer
+		str  string
+	}{
+		{timer.New(timer.Name("foo")), `<timer "foo" duration:0s started:nil elapsed:0s>`},
+		{timer.New(timer.Started(&time.Time{})), `<timer "" duration:0s started:"0001-01-01T00:00:00.0000" elapsed:0s>`},
+	}
+	for _, test := range testCases {
+		t.Run(test.str, func(t *testing.T) {
+			s := test.timr.(fmt.Stringer)
+			if actual := s.String(); actual != test.str {
+				t.Fatal(actual)
+			}
+		})
+	}
 }

@@ -1,8 +1,9 @@
-package timer
+package timer_test
 
 import (
 	"encoding/json"
 	"reflect"
+	"spirozh/timr/timer"
 	"testing"
 	"time"
 )
@@ -10,24 +11,24 @@ import (
 func Test_JSONMarshal(t *testing.T) {
 	type test struct {
 		name  string
-		timer timer
+		timer any
 		json  string
 	}
 
 	tests := []test{
 		{
 			name:  "zero timer",
-			timer: New(),
+			timer: timer.New(),
 			json:  `{"name":"","duration":0,"started":null,"elapsed":0}`,
 		},
 		{
 			name:  "zero started",
-			timer: New(Name("foo"), Duration(time.Second), Started(&time.Time{}), Elapsed(time.Minute)),
+			timer: timer.New(timer.Name("foo"), timer.Duration(time.Second), timer.Started(&time.Time{}), timer.Elapsed(time.Minute)),
 			json:  `{"name":"foo","duration":1000,"started":"0001-01-01T00:00:00.0000","elapsed":60000}`,
 		},
 		{
 			name:  "nil started",
-			timer: New(Name("bar"), Duration(time.Minute), Started(nil), Elapsed(time.Second)),
+			timer: timer.New(timer.Name("bar"), timer.Duration(time.Minute), timer.Started(nil), timer.Elapsed(time.Second)),
 			json:  `{"name":"bar","duration":60000,"started":null,"elapsed":1000}`,
 		},
 	}
@@ -49,61 +50,51 @@ func Test_JSONUnmarshal(t *testing.T) {
 	type test struct {
 		name         string
 		json         string
-		timer        timer
 		unmarshalErr error
+		timer        any
 	}
 
 	tests := []test{
 		{
 			name:  "started zero",
 			json:  `{"name":"foo","duration":1000,"started":"0001-01-01T00:00:00.0000","elapsed":60000}`,
-			timer: New(Name("foo"), Duration(time.Second), Started(&time.Time{}), Elapsed(time.Minute)),
+			timer: timer.New(timer.Name("foo"), timer.Duration(time.Second), timer.Started(&time.Time{}), timer.Elapsed(time.Minute)),
 		},
 		{
 			name:  "started null",
 			json:  `{"name":"bar","duration":60000,"started":null,"elapsed":1000}`,
-			timer: New(Name("bar"), Duration(time.Minute), Elapsed(time.Second)),
+			timer: timer.New(timer.Name("bar"), timer.Duration(time.Minute), timer.Elapsed(time.Second)),
 		},
 		{
-			name:         "bad json",
+			name:         "bad json (bad date)",
+			json:         `{"name":"bar","duration":60000,"started":"not a date","elapsed":1000}`,
+			timer:        timer.New(),
+			unmarshalErr: &time.ParseError{},
+		},
+		{
+			name:         "bad json (missing closing brace)",
 			json:         `{"name":"bar","duration":60000,"started":null,"elapsed":1000`,
-			timer:        New(),
+			timer:        timer.New(),
 			unmarshalErr: &json.SyntaxError{},
+		},
+		{
+			name:         "bad json (numeric name)",
+			json:         `{"name":0,"duration":60000,"started":null,"elapsed":1000}`,
+			timer:        timer.New(),
+			unmarshalErr: &json.UnmarshalTypeError{},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			timer := New()
+			timer := timer.New()
 			err := json.Unmarshal([]byte(test.json), &timer)
-			if test.unmarshalErr == nil && err != nil {
-				t.Errorf("err\nexpected: nil\n  actual: %v", err)
-			} else if test.unmarshalErr != nil && err == nil {
-				t.Errorf("err\nexpected: %v\n  actual: nil", test.unmarshalErr)
-			} else if test.unmarshalErr == nil && err == nil {
-				// no big deal
-			} else {
-				testErrType := reflect.TypeOf(test.unmarshalErr)
-				actualErrType := reflect.TypeOf(err)
-				if testErrType != actualErrType {
-					t.Errorf("err type\nexpected: %v\n  actual: %v", testErrType, actualErrType)
-				}
+			if expected, actual := reflect.TypeOf(test.unmarshalErr), reflect.TypeOf(err); expected != actual {
+				t.Errorf("err type while unmarshalling:\nexpected: %v\n  actual: %v", expected, actual)
 			}
 
-			if (test.timer.started == nil) && (timer.started != nil) {
-				t.Errorf("timer.started\nexpected: nil\n  actual: &%v", *timer.started)
-			} else if (test.timer.started != nil) && (timer.started == nil) {
-				t.Errorf("timer.started\nexpected: &%v\n  actual: nil", *test.timer.started)
-			} else if (test.timer.started == nil) && (timer.started == nil) {
-				// no big deal
-			} else if *test.timer.started != *timer.started {
-				t.Errorf("timer.started\nexpected: &%v\n  actual: &%v", *test.timer.started, *timer.started)
-			}
-
-			timer.started = nil
-			test.timer.started = nil
-			if timer != test.timer {
-				t.Errorf("timer (ignore started)\nexpected: %v\n  actual: %v", test.timer, timer)
+			if !reflect.DeepEqual(test.timer, timer) {
+				t.Errorf("timer\nexpected: %s\n  actual: %s", test.timer, timer)
 			}
 		})
 	}
