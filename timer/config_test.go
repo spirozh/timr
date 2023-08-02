@@ -8,6 +8,7 @@ import (
 )
 
 func TestOptions(t *testing.T) {
+
 	t.Run("name", func(t *testing.T) {
 		timr := timer.New(timer.Name("foo"))
 		if timr.Name() != "foo" {
@@ -38,8 +39,8 @@ func TestOptions(t *testing.T) {
 	})
 
 	t.Run("duration", func(t *testing.T) {
-		timr := timer.New(timer.Duration(0))
-		if actual := timr.Remaining(time.Time{}); actual != 0 {
+		timr := timer.New(timer.Duration(time.Hour))
+		if actual := timr.Remaining(time.Time{}); actual != time.Hour {
 			t.Fatal(
 				"Duration set failed",
 				"\nexpected: ", 0,
@@ -47,8 +48,8 @@ func TestOptions(t *testing.T) {
 			)
 		}
 
-		restoreConfig := timr.Config(timer.Duration(time.Hour))
-		if actual := timr.Remaining(time.Time{}); actual != time.Hour {
+		restoreConfig := timr.Config(timer.Duration(0))
+		if actual := timr.Remaining(time.Time{}); actual != 0 {
 			t.Fatal(
 				"Duration option failed",
 				"\nexpected: ", time.Hour,
@@ -57,7 +58,7 @@ func TestOptions(t *testing.T) {
 		}
 
 		timr.Config(restoreConfig...)
-		if actual := timr.Remaining(time.Time{}); actual != 0 {
+		if actual := timr.Remaining(time.Time{}); actual != time.Hour {
 			t.Fatal(
 				"Duration restore failed",
 				"\nexpected: ", 0,
