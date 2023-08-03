@@ -1,3 +1,13 @@
+// Package mux implements an HTTP router.
+//
+// Features:
+// * automatic Allow header generation for 405
+// * automatic HEAD handler
+// * custom 404 and 405 handlers
+// * paths with named placeholders (conflicts resolved by first defined) and optional methods
+// * middleware
+//
+// TODO: groups, automatic OPTION handler
 package mux
 
 import (
