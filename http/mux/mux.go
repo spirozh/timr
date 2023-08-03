@@ -7,7 +7,7 @@
 // * paths with named placeholders (conflicts resolved by first defined) and optional methods
 // * middleware
 //
-// TODO: groups, automatic OPTION handler
+// TODO: groups, automatic OPTION handler, documentation
 package mux
 
 import (
