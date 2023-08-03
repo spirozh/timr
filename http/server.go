@@ -2,56 +2,64 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 )
 
 func Serve() {
-	defer fmt.Println("quitting serve")
-
-	sseDone := make(chan any)
+	shutdown := make(chan struct{})
 
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: routes(sseDone),
+		Handler: routes(shutdown),
 	}
 
+	var mu sync.Mutex
+	mu.Lock()
 	go func() {
+		defer mu.Unlock()
 		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
 
-	waitForShutdown(srv, sseDone)
+	waitForShutdown(srv, shutdown)
+	mu.Lock()
 }
 
-func waitForShutdown(srv *http.Server, sseDone chan any) {
+func waitForShutdown(srv *http.Server, shutdown chan struct{}) {
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
 	signal.Notify(c, os.Interrupt)
 
-	// Block until we receive our signal.
-	<-c
+	// Block until we receive our signal or shutdown is closed
+	select {
+	case <-c:
+	case <-shutdown:
+	}
 
-	// Shutdown SSE connections
-	close(sseDone)
+	closeIfOpen(shutdown)
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	srv.Shutdown(ctx)
+	// Doesn't block if no connections, but will otherwise wait until the timeout deadline.
+	err := srv.Shutdown(ctx)
+	if err != nil {
+		log.Println("server Shutdown error: ", err)
+	}
+}
 
-	// Optionally, you could run srv.Shutdown in a goroutine and block on
-	// <-ctx.Done() if your application should wait for other services
-	// to finalize based on context cancellation.
-	log.Println("shutting down")
-	os.Exit(0)
+func closeIfOpen(ch chan struct{}) {
+	select {
+	case <-ch:
+	default:
+		close(ch)
+	}
 }

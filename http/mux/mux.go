@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-type mux struct {
+type Mux struct {
 	routes     []route
-	handler404 http.Handler
-	handler405 http.Handler
+	NotFound   http.Handler
+	handler405 func(allowed []string) http.Handler
 }
 
 type route struct {
@@ -22,13 +22,34 @@ type route struct {
 	res     map[string]*regexp.Regexp
 }
 
-func New() http.Handler {
-	return &mux{}
+func New() *Mux {
+	return &Mux{
+		handler405: func(allowed []string) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Add("Allow", strings.Join(allowed, ","))
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			})
+		},
+		NotFound: http.NotFoundHandler(),
+	}
 }
 
-var allMethods = []string{http.MethodConnect, http.MethodDelete, http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodPost, http.MethodPut, http.MethodTrace}
+var allMethods = []string{
+	http.MethodConnect, http.MethodDelete, http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodPost, http.MethodPut, http.MethodTrace,
+}
 
-func (m *mux) Handle(path string, handler http.Handler, methods ...string) {
+func (m *Mux) HandleFunc(path string, handler http.HandlerFunc, methods ...string) {
+	m.Handle(path, handler, methods...)
+}
+
+func (m *Mux) Handle(path string, handler http.Handler, methods ...string) {
+	if path == "" {
+		panic("path empty")
+	}
+	if path[0] != '/' {
+		panic("path must start with '/'")
+	}
+
 	if len(methods) == 0 {
 		methods = allMethods
 	}
@@ -39,24 +60,34 @@ func (m *mux) Handle(path string, handler http.Handler, methods ...string) {
 		varidxs []int
 	)
 
+	//for seg, path, found := strings.Cut(path, "/");
+
+	path = path[1:]
+
 	segs := strings.Split(path, "/")
 	for i, seg := range segs {
 		switch {
-		case seg[0] == ':':
+		case len(seg) == 0:
+			continue
 		case seg == "...":
 			if i < len(segs)-1 {
 				panic("cannot use wildcard here")
 			}
 			isWild = true
+			segs = segs[:len(segs)-1]
 
 		case seg[0] == ':':
-			varidxs = append(varidxs, i) // signal that this is a var
-			// check for regex
 			varname, re, hasRe := strings.Cut(seg[1:], "|")
+			for _, i := range varidxs {
+				if segs[i] == varname {
+					panic("duplicate varname")
+				}
+			}
+			varidxs = append(varidxs, i) // signal that this is a var
 			if hasRe {
-				compRe, err := regexp.Compile(re)
+				compRe, err := regexp.Compile("^" + re + "$")
 				if err != nil {
-					panic("or something")
+					panic("bad regexp")
 				}
 				if res == nil {
 					res = map[string]*regexp.Regexp{}
@@ -79,10 +110,9 @@ func (m *mux) Handle(path string, handler http.Handler, methods ...string) {
 		r1.method = method
 		m.routes = append(m.routes, r1)
 	}
-
 }
 
-func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var allowed []string
 	for _, rt := range m.routes {
 		if vars, found := rt.matches(r.URL.Path); found {
@@ -93,19 +123,17 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				rt.h.ServeHTTP(w, r)
 				return
 			}
-			allowed = append(allowed, r.Method)
+			allowed = append(allowed, rt.method)
 		}
 	}
 
 	if allowed == nil {
-		// send 404
-		w.WriteHeader(http.StatusNotFound)
+		m.NotFound.ServeHTTP(w, r)
+		return
 	}
 
 	// send 405 with allow methods
-	w.Header().Add("Allow", strings.Join(allowed, ","))
-	w.WriteHeader(http.StatusMethodNotAllowed)
-
+	m.handler405(allowed).ServeHTTP(w, r)
 }
 
 type varkeytype struct{}
@@ -123,12 +151,16 @@ func Var(r *http.Request, key string) (val string, ok bool) {
 		return "", false
 	}
 
-	return vars[key], true
+	val, found := vars[key]
+	return val, found
 
 }
 
 func (rt route) matches(path string) (map[string]string, bool) {
-	urlSegments := strings.Split(path, "/")
+	if len(path) == 0 || path[0] != '/' {
+		return nil, false
+	}
+	urlSegments := strings.Split(path[1:], "/")
 
 	if sn, un := len(rt.segs), len(urlSegments); un < sn || (!rt.wild && un > sn) {
 		return nil, false
@@ -142,12 +174,9 @@ func (rt route) matches(path string) (map[string]string, bool) {
 		if len(varidxs) > 0 && varidxs[0] == i {
 			varidxs = varidxs[1:]
 
-			if re, hasRe := rt.res[rSeg]; hasRe {
-				if !re.MatchString(uSeg) {
-					return nil, false
-				}
+			if re, hasRe := rt.res[rSeg]; hasRe && !re.MatchString(uSeg) {
+				return nil, false
 			}
-
 			continue
 		}
 
@@ -156,7 +185,7 @@ func (rt route) matches(path string) (map[string]string, bool) {
 		}
 	}
 
-	if len(rt.varidxs) == 0 {
+	if len(rt.varidxs) == 0 && !rt.wild {
 		return nil, true
 	}
 
