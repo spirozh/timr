@@ -53,8 +53,7 @@ func Test_TimerString(t *testing.T) {
 	}
 	for _, test := range testCases {
 		t.Run(test.str, func(t *testing.T) {
-			s := test.timr.(fmt.Stringer)
-			if actual := s.String(); actual != test.str {
+			if actual := fmt.Sprint(test.timr); actual != test.str {
 				t.Fatal(actual)
 			}
 		})

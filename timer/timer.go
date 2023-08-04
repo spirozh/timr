@@ -5,16 +5,7 @@ import (
 	"time"
 )
 
-type Timer interface {
-	Config(options ...timerOption) []timerOption
-	Name() string
-	Elapsed(time.Time) time.Duration
-	Remaining(time.Time) time.Duration
-	Start(time.Time)
-	Stop(time.Time)
-}
-
-type timer struct {
+type Timer struct {
 	name     string
 	duration time.Duration
 	started  *time.Time
@@ -22,12 +13,12 @@ type timer struct {
 }
 
 func New(options ...timerOption) Timer {
-	t := timer{}
+	t := Timer{}
 	t.Config(options...)
-	return &t
+	return t
 }
 
-func (t timer) String() string {
+func (t Timer) String() string {
 	s := "nil"
 	if t.started != nil {
 		s = fmt.Sprintf(`"%s"`, t.started.Format(timeFormat))
@@ -35,11 +26,11 @@ func (t timer) String() string {
 	return fmt.Sprintf(`<timer "%s" duration:%s started:%s elapsed:%s>`, t.name, t.duration, s, t.elapsed)
 }
 
-func (t timer) Name() string {
+func (t Timer) Name() string {
 	return t.name
 }
 
-func (t timer) Elapsed(now time.Time) time.Duration {
+func (t Timer) Elapsed(now time.Time) time.Duration {
 	e := t.elapsed
 	if t.started != nil {
 		e += now.Sub(*t.started)
@@ -47,17 +38,17 @@ func (t timer) Elapsed(now time.Time) time.Duration {
 	return e
 }
 
-func (t timer) Remaining(now time.Time) time.Duration {
+func (t Timer) Remaining(now time.Time) time.Duration {
 	return t.duration - t.Elapsed(now)
 }
 
-func (t *timer) Start(now time.Time) {
+func (t *Timer) Start(now time.Time) {
 	if t.started == nil {
 		t.started = &now
 	}
 }
 
-func (t *timer) Stop(now time.Time) {
+func (t *Timer) Stop(now time.Time) {
 	if t.started != nil {
 		t.elapsed += now.Sub(*t.started)
 		t.started = nil

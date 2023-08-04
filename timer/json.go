@@ -14,7 +14,7 @@ type timerAux struct {
 
 const timeFormat = "2006-01-02T15:04:05.0000"
 
-func (t timer) MarshalJSON() ([]byte, error) {
+func (t Timer) MarshalJSON() ([]byte, error) {
 	var started *string
 	if t.started != nil {
 		timeStr := t.started.Format(timeFormat)
@@ -29,7 +29,7 @@ func (t timer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aux)
 }
 
-func (t *timer) UnmarshalJSON(data []byte) error {
+func (t *Timer) UnmarshalJSON(data []byte) error {
 	aux := &timerAux{}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err

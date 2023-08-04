@@ -117,7 +117,5 @@ func TestOptions(t *testing.T) {
 		if string(b0) != string(b2) {
 			t.Fatal("restoring config failed")
 		}
-
-		// original assertions
 	})
 }
