@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,30 +16,22 @@ func (m *Mux) HandleFunc(path string, handler http.HandlerFunc, methods ...strin
 }
 
 func (m *Mux) Handle(path string, handler http.Handler, methods ...string) {
-	if path == "" {
-		panic("path empty")
+	if path == "" || path[0] != '/' {
+		panic(fmt.Sprintf(`invalid path: %#v`, path))
 	}
-	if path[0] != '/' {
-		panic("path must start with '/'")
+	path = path[1:]
+
+	if contains(methods, http.MethodGet) && !contains(methods, http.MethodHead) {
+		methods = append(methods, http.MethodHead)
 	}
 
 	if len(methods) == 0 {
 		methods = allMethods
 	}
 
-	if contains(methods, http.MethodGet) && !contains(methods, http.MethodHead) {
-		methods = append(methods, http.MethodHead)
-	}
-
-	var (
-		isWild  bool
-		res     map[string]*regexp.Regexp
-		varidxs []int
-	)
-
-	//for seg, path, found := strings.Cut(path, "/");
-
-	path = path[1:]
+	isWild := false
+	res := map[string]*regexp.Regexp{}
+	varidxs := []int{}
 
 	segs := strings.Split(path, "/")
 	for i, seg := range segs {
@@ -51,7 +44,6 @@ func (m *Mux) Handle(path string, handler http.Handler, methods ...string) {
 			}
 			isWild = true
 			segs = segs[:len(segs)-1]
-
 		case seg[0] == ':':
 			varname, re, hasRe := strings.Cut(seg[1:], "|")
 			for _, i := range varidxs {
@@ -61,14 +53,7 @@ func (m *Mux) Handle(path string, handler http.Handler, methods ...string) {
 			}
 			varidxs = append(varidxs, i) // signal that this is a var
 			if hasRe {
-				compRe, err := regexp.Compile("^" + re + "$")
-				if err != nil {
-					panic("bad regexp")
-				}
-				if res == nil {
-					res = map[string]*regexp.Regexp{}
-				}
-				res[varname] = compRe
+				res[varname] = regexp.MustCompile(fmt.Sprintf(`^%s$`, re))
 			}
 			segs[i] = varname
 		}
