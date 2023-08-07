@@ -13,7 +13,7 @@ func TestSetVar(t *testing.T) {
 	}
 
 	k, v := "foo", "bar"
-	newr := mux.SetVar(r, k, v)
+	newr := mux.BindVar(r, k, v)
 	if newr == r {
 		t.Fatal("SetVar should make a new request the first time")
 	}
@@ -26,7 +26,7 @@ func TestSetVar(t *testing.T) {
 		t.Errorf("mux.Var(r, %#v):\nwant: %#v\n got: %#v", k, v, got)
 	}
 
-	nextr := mux.SetVar(newr, k, v)
+	nextr := mux.BindVar(newr, k, v)
 	if newr != nextr {
 		t.Fatal("SetVar should not make a new request the second time")
 	}
