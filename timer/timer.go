@@ -12,7 +12,7 @@ type Timer struct {
 	elapsed  time.Duration
 }
 
-func New(options ...timerOption) Timer {
+func New(options ...TimerOption) Timer {
 	t := Timer{}
 	t.Config(options...)
 	return t
