@@ -10,42 +10,40 @@ import (
 	"time"
 )
 
-func Serve() {
-	shutdown := make(chan struct{})
-
+func Serve(ctx context.Context, h http.Handler) {
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: routes(shutdown),
+		Handler: h,
 	}
 
 	var mu sync.Mutex
-	mu.Lock()
-	go func() {
-		defer mu.Unlock()
-		if err := srv.ListenAndServe(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	waitForShutdown(srv, shutdown)
+	go listenAndServe(srv, &mu)
+	waitForShutdown(ctx, srv)
 	mu.Lock()
 }
 
-func waitForShutdown(srv *http.Server, shutdown chan struct{}) {
+func listenAndServe(srv *http.Server, mu sync.Locker) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if err := srv.ListenAndServe(); err != nil {
+		log.Println(err)
+	}
+}
+
+func waitForShutdown(ctx context.Context, srv *http.Server) {
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
 	signal.Notify(c, os.Interrupt)
 
-	// Block until we receive our signal or shutdown is closed
+	// Block until we receive our signal or context is canceled
 	select {
 	case <-c:
-	case <-shutdown:
+	case <-ctx.Done():
 	}
 
-	closeIfOpen(shutdown)
-
-	// Create a deadline to wait for.
+	// Create a deadline to wait for server shutdown.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
@@ -53,13 +51,5 @@ func waitForShutdown(srv *http.Server, shutdown chan struct{}) {
 	err := srv.Shutdown(ctx)
 	if err != nil {
 		log.Println("server Shutdown error: ", err)
-	}
-}
-
-func closeIfOpen(ch chan struct{}) {
-	select {
-	case <-ch:
-	default:
-		close(ch)
 	}
 }

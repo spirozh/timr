@@ -1,16 +1,17 @@
-package http
+package main
 
 import (
+	"context"
 	"net/http"
 	"spirozh/timr/http/mux"
 )
 
-func routes(shutdown chan<- struct{}) http.Handler {
+func Routes(ctx context.Context, cancel func()) http.Handler {
 	m := mux.New()
 
 	m.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		close(shutdown)
+		cancel()
 	}, http.MethodGet)
 
 	return m
