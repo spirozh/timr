@@ -2,10 +2,10 @@ package timer
 
 import "time"
 
-type timerOption func(*Timer) timerOption
+type TimerOption func(*Timer) TimerOption
 
-func (t *Timer) Config(options ...timerOption) []timerOption {
-	var initialOptions []timerOption
+func (t *Timer) Config(options ...TimerOption) []TimerOption {
+	var initialOptions []TimerOption
 
 	for _, option := range options {
 		initialOptions = append(initialOptions, option(t))
@@ -14,29 +14,29 @@ func (t *Timer) Config(options ...timerOption) []timerOption {
 	return initialOptions
 }
 
-func Name(name string) timerOption {
-	return func(t *Timer) timerOption {
+func Name(name string) TimerOption {
+	return func(t *Timer) TimerOption {
 		defer t.notify(func() { t.name = name })
 		return Name(t.Name())
 	}
 }
 
-func Duration(duration time.Duration) timerOption {
-	return func(t *Timer) timerOption {
+func Duration(duration time.Duration) TimerOption {
+	return func(t *Timer) TimerOption {
 		defer t.notify(func() { t.duration = duration })
 		return Duration(t.duration)
 	}
 }
 
-func Started(started *time.Time) timerOption {
-	return func(t *Timer) timerOption {
+func Started(started *time.Time) TimerOption {
+	return func(t *Timer) TimerOption {
 		defer t.notify(func() { t.started = started })
 		return Started(t.started)
 	}
 }
 
-func Elapsed(elapsed time.Duration) timerOption {
-	return func(t *Timer) timerOption {
+func Elapsed(elapsed time.Duration) TimerOption {
+	return func(t *Timer) TimerOption {
 		defer t.notify(func() { t.elapsed = elapsed })
 		return Elapsed(t.elapsed)
 	}
