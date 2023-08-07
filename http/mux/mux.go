@@ -17,10 +17,10 @@ import (
 )
 
 type Mux struct {
-	routes     []route
-	mws        []Middleware
-	NotFound   http.Handler
-	handler405 func(allowed []string) http.Handler
+	routes           []route
+	mws              []Middleware
+	NotFound         http.Handler
+	MethodNotAllowed func(allowed []string) http.Handler
 }
 
 type route struct {
@@ -34,9 +34,13 @@ type route struct {
 
 func New() *Mux {
 	return &Mux{
-		handler405: func(allowed []string) http.Handler {
+		MethodNotAllowed: func(allowed []string) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Add("Allow", strings.Join(allowed, ","))
+				w.Header().Add("Allow", strings.Join(allowed, ", "))
+				if r.Method == http.MethodOptions {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			})
 		},
