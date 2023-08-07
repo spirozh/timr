@@ -1,18 +1,38 @@
 package mux
 
 import (
-	"context"
 	"net/http"
 	"strings"
 )
 
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var allowed []string
+
+	rPath := r.URL.Path
+
+	// https://www.rfc-editor.org/rfc/rfc9110#OPTIONS
+	if rPath == "*" && r.Method == http.MethodOptions {
+		allowed = append(allowed, http.MethodOptions)
+		for _, rt := range m.routes {
+			if !contains(allowed, rt.method) {
+				allowed = append(allowed, rt.method)
+			}
+		}
+		m.MethodNotAllowed(allowed).ServeHTTP(w, r)
+		return
+	}
+
+	if rPath == "" || rPath[0] != '/' {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	urlSegments := strings.Split(rPath[1:], "/")
+
 	for _, rt := range m.routes {
-		if vars, found := rt.matches(r.URL.Path); found {
+		if found := rt.matches(urlSegments); found {
 			if rt.method == r.Method {
-				// bind vars
-				r = r.WithContext(context.WithValue(r.Context(), varkey, vars))
+				r = rt.bindVars(r, urlSegments)
 
 				rt.h.ServeHTTP(w, r)
 				return
@@ -26,18 +46,17 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// send 405 with allow methods
-	m.handler405(allowed).ServeHTTP(w, r)
+	if !contains(allowed, http.MethodOptions) {
+		allowed = append(allowed, http.MethodOptions)
+	}
+
+	// send 405 with allowed methods
+	m.MethodNotAllowed(allowed).ServeHTTP(w, r)
 }
 
-func (rt route) matches(path string) (map[string]string, bool) {
-	if len(path) == 0 || path[0] != '/' {
-		return nil, false
-	}
-	urlSegments := strings.Split(path[1:], "/")
-
+func (rt route) matches(urlSegments []string) bool {
 	if sn, un := len(rt.segs), len(urlSegments); un < sn || (!rt.wild && un > sn) {
-		return nil, false
+		return false
 	}
 
 	varidxs := rt.varidxs
@@ -49,20 +68,24 @@ func (rt route) matches(path string) (map[string]string, bool) {
 			varidxs = varidxs[1:]
 
 			if re, hasRe := rt.res[rSeg]; hasRe && !re.MatchString(uSeg) {
-				return nil, false
+				return false
 			}
 			continue
 		}
 
 		if rSeg != uSeg {
-			return nil, false
+			return false
 		}
 	}
 
 	if len(rt.varidxs) == 0 && !rt.wild {
-		return nil, true
+		return true
 	}
 
+	return true
+}
+
+func (rt *route) bindVars(r *http.Request, urlSegments []string) *http.Request {
 	vars := map[string]string{}
 	if rt.wild {
 		vars["..."] = strings.Join(urlSegments[len(rt.segs):], "/")
@@ -70,5 +93,6 @@ func (rt route) matches(path string) (map[string]string, bool) {
 	for _, i := range rt.varidxs {
 		vars[rt.segs[i]] = urlSegments[i]
 	}
-	return vars, true
+
+	return BindVars(r, vars)
 }

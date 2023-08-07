@@ -28,10 +28,10 @@ func TestMuxMatch(t *testing.T) {
 			"/", []string{http.MethodGet},
 			[]subtest{
 				{http.MethodGet, "/", http.StatusOK, nil, ""},
-				{http.MethodHead, "/", http.StatusOK, nil, ""},                          // registering GET should register HEAD
-				{http.MethodOptions, "/", http.StatusMethodNotAllowed, nil, "GET,HEAD"}, // without registered OPTIONS, automatisch
-				{http.MethodPost, "/", http.StatusMethodNotAllowed, nil, "GET,HEAD"},
-				{http.MethodGet, "", http.StatusNotFound, nil, ""},
+				{http.MethodHead, "/", http.StatusOK, nil, ""}, // registering GET should register HEAD
+				{http.MethodOptions, "/", http.StatusNoContent, nil, "GET, HEAD, OPTIONS"},
+				{http.MethodPost, "/", http.StatusMethodNotAllowed, nil, "GET, HEAD, OPTIONS"},
+				{http.MethodGet, "", http.StatusBadRequest, nil, ""},
 			},
 		},
 		{
@@ -39,7 +39,7 @@ func TestMuxMatch(t *testing.T) {
 			[]subtest{
 				{http.MethodGet, "/v", http.StatusOK, map[string]string{"k": "v"}, ""},
 				{http.MethodGet, "/", http.StatusOK, map[string]string{"k": ""}, ""},
-				{http.MethodGet, "//", http.StatusNotFound, nil, ""},
+				{http.MethodGet, "http://host//", http.StatusNotFound, nil, ""}, // to get '//' as path, urlParse needs more..
 			},
 		},
 		{
@@ -48,7 +48,7 @@ func TestMuxMatch(t *testing.T) {
 				{http.MethodGet, "/1", http.StatusOK, map[string]string{"k": "1"}, ""},
 				{http.MethodGet, "/v", http.StatusNotFound, nil, ""},
 				{http.MethodGet, "/", http.StatusNotFound, nil, ""},
-				{http.MethodGet, "//", http.StatusNotFound, nil, ""},
+				{http.MethodGet, "http://host//", http.StatusNotFound, nil, ""},
 			},
 		},
 	}
@@ -90,12 +90,12 @@ func TestMuxMatch(t *testing.T) {
 
 					status := w.Result().StatusCode
 					if status != sub.status {
-						t.Error("status\n want:", sub.status, "\n  got:", status)
+						t.Errorf("status\n want: %#v\n  got: %#v", sub.status, status)
 					}
 
 					allow := w.Result().Header.Get("Allow")
 					if allow != sub.allow {
-						t.Error("allow\n want:", sub.allow, "\n  got:", allow)
+						t.Errorf("allow\n want: %#v\n  got: %#v", sub.allow, allow)
 					}
 
 					if !paramsDone {
