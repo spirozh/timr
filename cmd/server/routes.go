@@ -24,6 +24,7 @@ type App struct {
 
 func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
 	m := mux.New()
+	m.Use(NoPanic)
 
 	m.HandleFunc("/selma", Selma, http.MethodGet)
 	m.Handle("/shutdown", Shutdown(cancel), http.MethodGet)
@@ -35,6 +36,20 @@ func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
 	return m
 }
 
+func NoPanic(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			panicked := recover()
+			if panicked == nil {
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "\n\n%#v\n\n", panicked)
+		}()
+		h.ServeHTTP(w, r)
+	})
+}
 func (app *App) TimrToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Timr-Token")
