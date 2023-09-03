@@ -48,7 +48,6 @@ func TestRoutes(t *testing.T) {
 			t.Fatal("no token")
 		}
 		token := regexp.MustCompile(`data: (.*)\n`).FindStringSubmatch(firstData)[1]
-		t.Error(token)
 
 		t.Run("without token", func(t *testing.T) {
 			serveName(t, "/trigger", nil, "", http.StatusUnauthorized)
