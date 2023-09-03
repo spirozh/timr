@@ -10,8 +10,16 @@ import (
 	"spirozh/timr/http/mux"
 )
 
+type sessionKeyType struct{}
+
+var sessionKey sessionKeyType
+
+type sseSession struct {
+	ch chan SSEEvent
+}
+
 type App struct {
-	tokens map[string]chan string
+	tokens map[string]sseSession
 }
 
 func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
@@ -21,16 +29,29 @@ func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
 	m.Handle("/shutdown", Shutdown(cancel), http.MethodGet)
 	m.Handle("/SSE", app.SSE(ctx), http.MethodGet)
 
-	m.Use(TimrToken())
+	m.Use(app.TimrToken)
 	m.Handle("/trigger", app.Trigger())
 
 	return m
 }
 
-func TimrToken() mux.Middleware {
-	return func(h http.Handler) http.Handler {
-		return h
-	}
+func (app *App) TimrToken(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("Timr-Token")
+		ss, ok := app.tokens[token]
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), sessionKey, ss))
+		h.ServeHTTP(w, r)
+	})
+}
+
+func session(r *http.Request) sseSession {
+	ss := r.Context().Value(sessionKey)
+	return ss.(sseSession)
 }
 
 func Selma(w http.ResponseWriter, r *http.Request) {
@@ -46,12 +67,7 @@ func Shutdown(cancel func()) http.HandlerFunc {
 
 func (app *App) Trigger() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Timr-Token")
-		if ch, ok := app.tokens[token]; ok {
-			go func() { ch <- "triggered" }()
-		} else {
-			w.WriteHeader(http.StatusUnauthorized)
-		}
+		go func() { session(r).ch <- SSEEvent{data: "triggered"} }()
 	}
 }
 
@@ -71,10 +87,23 @@ func RandomToken(n int) string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
+type SSEEvent struct {
+	event string
+	data  string
+}
+
+func (e SSEEvent) Write(w io.Writer) {
+	flusher, _ := w.(http.Flusher)
+
+	if e.event != "" {
+		fmt.Fprintf(w, "event: %s\n", e.event)
+	}
+	fmt.Fprintf(w, "data: %s\n", e.data)
+	flusher.Flush()
+}
+
 func (app *App) SSE(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		flusher, _ := w.(http.Flusher)
-
 		// write headers
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
@@ -83,18 +112,16 @@ func (app *App) SSE(ctx context.Context) http.HandlerFunc {
 		// generate token
 		tok := RandomToken(5)
 		// send token
-		fmt.Fprintf(w, "event: token\ndata: %s\n\n", tok)
-		flusher.Flush()
+		SSEEvent{event: "token", data: tok}.Write(w)
 
 		// save channel with token
-		app.tokens[tok] = make(chan string)
+		app.tokens[tok] = sseSession{make(chan SSEEvent)}
 		defer delete(app.tokens, tok)
 
 		for {
 			select {
-			case data := <-app.tokens[tok]:
-				fmt.Fprintf(w, "data: %v\n\n", data)
-				flusher.Flush()
+			case event := <-app.tokens[tok].ch:
+				event.Write(w)
 			case <-ctx.Done():
 				return
 			case <-r.Context().Done():

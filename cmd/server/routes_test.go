@@ -12,7 +12,7 @@ import (
 
 func TestRoutes(t *testing.T) {
 	app := App{
-		tokens: map[string]chan string{},
+		tokens: map[string]sseSession{},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	r := app.Routes(ctx, cancel)

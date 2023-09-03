@@ -13,7 +13,7 @@ func main() {
 	t.Start(time.Now())
 
 	app := App{
-		tokens: map[string]chan string{},
+		tokens: map[string]sseSession{},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
