@@ -13,7 +13,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// https://www.rfc-editor.org/rfc/rfc9110#OPTIONS
 	if rPath == "*" && r.Method == http.MethodOptions {
 		allowed = append(allowed, http.MethodOptions)
-		for _, rt := range m.routes {
+		for _, rt := range *m.routes {
 			if !contains(allowed, rt.method) {
 				allowed = append(allowed, rt.method)
 			}
@@ -29,7 +29,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	urlSegments := strings.Split(rPath[1:], "/")
 
-	for _, rt := range m.routes {
+	for _, rt := range *m.routes {
 		if found := rt.matches(urlSegments); found {
 			if rt.method == r.Method {
 				r = rt.bindVars(r, urlSegments)

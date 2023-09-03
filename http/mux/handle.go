@@ -69,7 +69,7 @@ func (m *Mux) Handle(path string, handler http.Handler, methods ...string) {
 	for _, method := range methods {
 		rCopy := r
 		rCopy.method = method
-		m.routes = append(m.routes, rCopy)
+		*m.routes = append(*m.routes, rCopy)
 	}
 }
 

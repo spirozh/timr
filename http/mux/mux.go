@@ -17,7 +17,7 @@ import (
 )
 
 type Mux struct {
-	routes           []route
+	routes           *[]route
 	mws              []Middleware
 	NotFound         http.Handler
 	MethodNotAllowed func(allowed []string) http.Handler
@@ -34,6 +34,8 @@ type route struct {
 
 func New() *Mux {
 	return &Mux{
+		routes: &[]route{},
+		mws:    []Middleware{},
 		MethodNotAllowed: func(allowed []string) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Add("Allow", strings.Join(allowed, ", "))
