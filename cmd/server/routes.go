@@ -20,9 +20,17 @@ func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
 	m.HandleFunc("/selma", Selma, http.MethodGet)
 	m.Handle("/shutdown", Shutdown(cancel), http.MethodGet)
 	m.Handle("/SSE", app.SSE(ctx), http.MethodGet)
+
+	m.Use(TimrToken())
 	m.Handle("/trigger", app.Trigger())
 
 	return m
+}
+
+func TimrToken() mux.Middleware {
+	return func(h http.Handler) http.Handler {
+		return h
+	}
 }
 
 func Selma(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +81,7 @@ func (app *App) SSE(ctx context.Context) http.HandlerFunc {
 		w.Header().Set("Connection", "keep-alive")
 
 		// generate token
-		tok := RandomToken(64)
+		tok := RandomToken(5)
 		// send token
 		fmt.Fprintf(w, "event: token\ndata: %s\n\n", tok)
 		flusher.Flush()
@@ -81,7 +89,6 @@ func (app *App) SSE(ctx context.Context) http.HandlerFunc {
 		// save channel with token
 		app.tokens[tok] = make(chan string)
 		defer delete(app.tokens, tok)
-		defer fmt.Println("leaving SSE, tok: ", tok)
 
 		for {
 			select {
