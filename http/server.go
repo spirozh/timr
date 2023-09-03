@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Serve(ctx context.Context, h http.Handler) {
+func Serve(ctx context.Context, done func(), h http.Handler) {
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: h,
@@ -18,7 +18,7 @@ func Serve(ctx context.Context, h http.Handler) {
 
 	var mu sync.Mutex
 	go listenAndServe(srv, &mu)
-	waitForShutdown(ctx, srv)
+	waitForShutdown(ctx, done, srv)
 	mu.Lock()
 }
 
@@ -31,7 +31,7 @@ func listenAndServe(srv *http.Server, mu sync.Locker) {
 	}
 }
 
-func waitForShutdown(ctx context.Context, srv *http.Server) {
+func waitForShutdown(ctx context.Context, done func(), srv *http.Server) {
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
@@ -42,6 +42,8 @@ func waitForShutdown(ctx context.Context, srv *http.Server) {
 	case <-c:
 	case <-ctx.Done():
 	}
+
+	done()
 
 	// Create a deadline to wait for server shutdown.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
