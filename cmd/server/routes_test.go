@@ -30,6 +30,11 @@ func TestRoutes(t *testing.T) {
 		if wantBody != gotBody {
 			t.Error("\n(body) want: ", wantBody, "\n        got: ", gotBody)
 		}
+
+		gotStatus := w.Result().StatusCode
+		if wantStatus != gotStatus {
+			t.Error("\n(status) want: ", wantStatus, "\n         got: ", gotStatus)
+		}
 	}
 
 	t.Run("selma", func(t *testing.T) {
