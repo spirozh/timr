@@ -113,7 +113,7 @@ func (e SSEEvent) Write(w io.Writer) {
 	if e.event != "" {
 		fmt.Fprintf(w, "event: %s\n", e.event)
 	}
-	fmt.Fprintf(w, "data: %s\n", e.data)
+	fmt.Fprintf(w, "data: %s\n\n", e.data)
 	flusher.Flush()
 }
 
