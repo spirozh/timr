@@ -1,7 +1,7 @@
 package mux_test
 
 import (
-	"spirozh/timr/http/mux"
+	"spirozh/timr/internal/http/mux"
 	"testing"
 )
 

@@ -2,7 +2,7 @@ package mux_test
 
 import (
 	"net/http"
-	"spirozh/timr/http/mux"
+	"spirozh/timr/internal/http/mux"
 	"testing"
 )
 
