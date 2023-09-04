@@ -82,7 +82,7 @@ func Shutdown(cancel func()) http.HandlerFunc {
 
 func (app *App) Trigger() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		go func() { session(r).ch <- SSEEvent{data: "triggered"} }()
+		session(r).ch <- SSEEvent{data: "triggered"}
 	}
 }
 
@@ -124,14 +124,21 @@ func (app *App) SSE(ctx context.Context) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		// generate token
-		tok := RandomToken(5)
+		// generate not currently used token (should also check for 'recently used'?)
+		var tok string
+		for {
+			tok = RandomToken(15)
+			if _, alreadyExists := app.tokens[tok]; !alreadyExists {
+				break
+			}
+		}
+
 		// send token
 		SSEEvent{event: "token", data: tok}.Write(w)
 
 		// save channel with token
 		app.tokens[tok] = sseSession{make(chan SSEEvent)}
-		defer delete(app.tokens, tok)
+		defer close(app.tokens[tok].ch)
 
 		for {
 			select {
