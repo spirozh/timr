@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"spirozh/timr/http/mux"
+	"spirozh/timr/internal/http/mux"
 )
 
 type sessionKeyType struct{}

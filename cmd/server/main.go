@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"spirozh/timr/http"
-	"spirozh/timr/timer"
+	"spirozh/timr/internal/http"
+	"spirozh/timr/internal/timer"
 	"time"
 )
 
