@@ -2,7 +2,7 @@ package timer_test
 
 import (
 	"fmt"
-	"spirozh/timr/timer"
+	"spirozh/timr/internal/timer"
 	"testing"
 	"time"
 )

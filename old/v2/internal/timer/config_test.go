@@ -2,7 +2,7 @@ package timer_test
 
 import (
 	"encoding/json"
-	"spirozh/timr/timer"
+	"spirozh/timr/internal/timer"
 	"testing"
 	"time"
 )

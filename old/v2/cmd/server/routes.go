@@ -27,7 +27,7 @@ func (app *App) Routes(ctx context.Context, cancel func()) http.Handler {
 	m.Use(NoPanic)
 
 	m.HandleFunc("/selma", Selma, http.MethodGet)
-	m.Handle("/shutdown", Shutdown(cancel), http.MethodGet)
+	m.Handle("/shutdown", app.Shutdown(cancel), http.MethodGet)
 	m.Handle("/SSE", app.SSE(ctx), http.MethodGet)
 
 	m.Use(app.TimrToken)
@@ -73,9 +73,12 @@ func Selma(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("hello selma"))
 }
 
-func Shutdown(cancel func()) http.HandlerFunc {
+func (app *App) Shutdown(cancel func()) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		for token := range app.tokens {
+			delete(app.tokens, token)
+		}
 		cancel()
 	}
 }

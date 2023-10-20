@@ -3,7 +3,7 @@ package timer_test
 import (
 	"encoding/json"
 	"reflect"
-	"spirozh/timr/timer"
+	"spirozh/timr/internal/timer"
 	"testing"
 	"time"
 )
