@@ -26,15 +26,15 @@ func RandomToken(n int) string {
 }
 
 type SSEEvent struct {
-	event string
-	data  string
+	Event string
+	Data  string
 }
 
 func (e SSEEvent) Write(w io.Writer) {
-	if e.event != "" {
-		fmt.Fprintf(w, "event: %s\n", e.event)
+	if e.Event != "" {
+		fmt.Fprintf(w, "event: %s\n", e.Event)
 	}
-	fmt.Fprintf(w, "data: %s\n\n", e.data)
+	fmt.Fprintf(w, "data: %s\n\n", e.Data)
 
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
@@ -60,7 +60,7 @@ func (t SSETokenMap) SSE(serverCtx context.Context, sseChannels map[string]chan 
 		}
 
 		// send token
-		SSEEvent{event: "SSE-Token", data: tok}.Write(w)
+		SSEEvent{Event: "SSE-Token", Data: tok}.Write(w)
 
 		ch := make(chan SSEEvent)
 		defer close(ch)
