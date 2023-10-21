@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"spirozh/timr/internal/server"
 	"syscall"
@@ -10,12 +11,25 @@ import (
 	"time"
 )
 
+func TestBadConfig(t *testing.T) {
+	ctx, done := context.WithCancel(context.Background())
+
+	err := server.Serve(ctx, done, 0, "xxx", nil)
+
+	netAddrError := &net.AddrError{}
+	if !errors.As(err, &netAddrError) {
+		t.Fatal(err)
+	}
+}
+
 func TestServeCancel(t *testing.T) {
 	errCh := make(chan error)
 	shutdownTime := time.Millisecond
+	responseTime := 10 * time.Millisecond
+
 	srv := func(ctx context.Context, done func()) {
 		errCh <- server.Serve(ctx, done, shutdownTime, ":8080",
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { time.Sleep(time.Second) }))
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { time.Sleep(responseTime) }))
 	}
 
 	t.Run("call cancel function", func(t *testing.T) {
@@ -45,9 +59,11 @@ func TestServeCancel(t *testing.T) {
 		shutdownTime = time.Millisecond
 		go srv(ctx, done)
 
+		// wait for server to start and then make a request
+		time.Sleep(10 * time.Millisecond)
 		go http.Get("http://localhost:8080")
 
-		// wait for the request to start getting handled
+		// wait for the request to start getting handled and then send an interrupt
 		time.Sleep(5 * time.Millisecond)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 
@@ -55,5 +71,4 @@ func TestServeCancel(t *testing.T) {
 			t.Errorf("expected context deadline exceeded error when shutting down via interrupt: %v", err)
 		}
 	})
-
 }

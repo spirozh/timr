@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,14 +12,18 @@ import (
 )
 
 func Serve(ctx context.Context, cancel func(), shutdownTimeout time.Duration, addr string, h http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: h}
+	srv := &http.Server{
+		Addr:        addr,
+		Handler:     h,
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
 	closingErrChan := make(chan error)
-	go listenAndServe(srv, closingErrChan)
+	go listenAndServe(srv, cancel, closingErrChan)
 
 	return errors.Join(waitForShutdown(ctx, cancel, srv, shutdownTimeout), <-closingErrChan)
 }
 
-func listenAndServe(srv *http.Server, errChan chan<- error) {
+func listenAndServe(srv *http.Server, cancel func(), errChan chan<- error) {
 	err := srv.ListenAndServe()
 	if err == http.ErrServerClosed {
 		err = nil
@@ -26,7 +31,7 @@ func listenAndServe(srv *http.Server, errChan chan<- error) {
 	if err != nil {
 		err = fmt.Errorf("listenAndServe error:\n%w", err)
 	}
-
+	cancel()
 	errChan <- err
 }
 
