@@ -12,13 +12,10 @@ import (
 
 func Serve(ctx context.Context, cancel func(), shutdownTimeout time.Duration, addr string, h http.Handler) error {
 	srv := &http.Server{Addr: addr, Handler: h}
-
 	closingErrChan := make(chan error)
 	go listenAndServe(srv, closingErrChan)
 
-	shutdownError := waitForShutdown(ctx, cancel, srv, shutdownTimeout)
-
-	return errors.Join(<-closingErrChan, shutdownError)
+	return errors.Join(waitForShutdown(ctx, cancel, srv, shutdownTimeout), <-closingErrChan)
 }
 
 func listenAndServe(srv *http.Server, errChan chan<- error) {
