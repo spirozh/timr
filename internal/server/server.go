@@ -2,36 +2,35 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 )
 
-func Serve(ctx context.Context, cancel func(), shutdownTimeout time.Duration, addr string, h http.Handler) {
+func Serve(ctx context.Context, cancel func(), shutdownTimeout time.Duration, addr string, h http.Handler) error {
 	srv := &http.Server{Addr: addr, Handler: h}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingErrChan := make(chan error)
+	go listenAndServe(srv, closingErrChan)
 
-	go listenAndServe(srv, &wg)
+	shutdownError := waitForShutdown(ctx, cancel, srv, shutdownTimeout)
 
-	if err := waitForShutdown(ctx, cancel, srv, shutdownTimeout); err != nil {
-		log.Println(fmt.Errorf("error shutting down server:\n%w", err))
-	}
-
-	wg.Wait()
+	return errors.Join(<-closingErrChan, shutdownError)
 }
 
-func listenAndServe(srv *http.Server, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		log.Println(fmt.Errorf("error closing server:\n%w", err))
+func listenAndServe(srv *http.Server, errChan chan<- error) {
+	err := srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		err = nil
 	}
+	if err != nil {
+		err = fmt.Errorf("listenAndServe error:\n%w", err)
+	}
+
+	errChan <- err
 }
 
 func waitForShutdown(ctx context.Context, ctxCancel func(), srv *http.Server, timeout time.Duration) error {
@@ -52,5 +51,9 @@ func waitForShutdown(ctx context.Context, ctxCancel func(), srv *http.Server, ti
 	defer ctxCancel()
 
 	// Waits for all connections to be closed, or until the timeout deadline
-	return srv.Shutdown(ctx)
+	if err := srv.Shutdown(ctx); err != nil {
+		return fmt.Errorf("waitForShutdown error:\n%w", err)
+	}
+
+	return nil
 }
