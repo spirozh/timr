@@ -43,7 +43,7 @@ func (e SSEEvent) Write(w io.Writer) {
 
 type SSETokenMap map[string]chan SSEEvent
 
-func (t SSETokenMap) SSE(serverCtx context.Context, sseChannels map[string]chan SSEEvent) http.HandlerFunc {
+func (t SSETokenMap) SSE(serverCtx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// write headers
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -87,7 +87,7 @@ type sessionKeyType struct{}
 
 var sessionKey sessionKeyType
 
-func (t SSETokenMap) RequireSSE(h http.Handler) http.Handler {
+func (t SSETokenMap) RequireSSEToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("X-SSE-Token")
 		ch, ok := t[token]
