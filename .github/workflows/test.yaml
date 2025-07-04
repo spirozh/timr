@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: start_server
     steps:
+      - name: Install Hurl
+        run: |
+          VERSION=6.1.1
+          sudo apt-add-repository -y ppa:lepapareil/hurl
+          sudo apt install hurl="${VERSION}"*
       - uses: actions/checkout@v4
       - name: Hurl tests
         run: hurl --test test/hurl
