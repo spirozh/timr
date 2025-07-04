@@ -1,0 +1,22 @@
+name: Test
+on:
+  push:
+    branches:
+      - main
+jobs:
+  start_server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Server
+        run: |
+          go run spirozh/timr/commands/server &
+          sleep 10 # Wait for server to start
+  check_response:
+    runs-on: ubuntu-latest
+    needs: start_server
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hurl tests
+        run: hurl --test test/hurl
+
