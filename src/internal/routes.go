@@ -12,7 +12,7 @@ func AddRoutes(mux *http.ServeMux) {
 }
 
 func selma(w http.ResponseWriter, _ *http.Request) {
-	_, err := fmt.Fprintln(w, "Hello Selma")
+	_, err := fmt.Fprintln(w, "Hello, Selma!")
 	if err != nil {
 		slog.Error("Error writing response", "error", err)
 	}
