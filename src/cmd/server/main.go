@@ -5,39 +5,28 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"spirozh/timr/internal"
 	"syscall"
 	"time"
 )
-
-func logRequest(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	}
-}
-
-func selma(w http.ResponseWriter, r *http.Request) {
-	_, err := fmt.Fprintln(w, "Hello Selma")
-	if err != nil {
-		log.Println("Error writing response:", err)
-	}
-}
 
 func main() {
 	baseCtx := context.Background()
 
 	mux := http.NewServeMux()
-
-	// Define the handler for the '/selma' route
-	mux.HandleFunc("/selma", selma)
+	internal.AddRoutes(mux)
 
 	// Create a new server instance
 	s := &http.Server{
-		Addr:    ":8080",
-		Handler: logRequest(mux), // Use the default handler
+		BaseContext:       func(net.Listener) context.Context { return baseCtx },
+		Addr:              ":8080",
+		Handler:           internal.LogRequest(mux),
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       4 * time.Second,
 	}
 
 	// Start the web server in a goroutine
