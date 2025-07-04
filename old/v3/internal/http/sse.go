@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 )
 
 func init() {
@@ -41,33 +42,59 @@ func (e SSEEvent) Write(w io.Writer) {
 	}
 }
 
-type SSETokenMap map[string]chan SSEEvent
+type SSETokenMap struct {
+	mu       sync.RWMutex
+	channels map[string]chan SSEEvent
+}
 
+<<<<<<<< HEAD:src/internal/server/sse.go
 func (t SSETokenMap) SSE(serverCtx context.Context) http.HandlerFunc {
+========
+func (t *SSETokenMap) newToken() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	var token string
+	for {
+		token = RandomToken(15)
+		if _, used := t.channels[token]; !used {
+			break
+		}
+	}
+	t.channels[token] = make(chan SSEEvent)
+	return token
+}
+
+func (t *SSETokenMap) getChannel(token string) chan SSEEvent {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	return t.channels[token]
+}
+
+func (t *SSETokenMap) discardToken(token string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	close(t.getChannel(token))
+	delete(t.channels, token)
+}
+
+func (t *SSETokenMap) SSE(serverCtx context.Context, sseChannels map[string]chan SSEEvent) http.HandlerFunc {
+>>>>>>>> 21b71bc (start again):old/v3/internal/http/sse.go
 	return func(w http.ResponseWriter, r *http.Request) {
 		// write headers
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		// generate not currently used token (should also check for 'recently used'?)
-		var tok string
-		for {
-			tok = RandomToken(15)
-			if _, alreadyExists := t[tok]; !alreadyExists {
-				break
-			}
-		}
+		tok := t.newToken()
 
 		// send token
 		SSEEvent{Event: "SSE-Token", Data: tok}.Write(w)
 
-		ch := make(chan SSEEvent)
-		defer close(ch)
-
-		// save channel with token for for sending events to this connections
-		t[tok] = ch
-		defer delete(t, tok)
+		ch := t.getChannel(tok)
+		defer t.discardToken(tok)
 
 		requestCtx := r.Context()
 		for {
@@ -87,17 +114,20 @@ type sessionKeyType struct{}
 
 var sessionKey sessionKeyType
 
+<<<<<<<< HEAD:src/internal/server/sse.go
 func (t SSETokenMap) RequireSSEToken(h http.Handler) http.Handler {
+========
+func (t *SSETokenMap) RequireSSEToken(h http.Handler) http.Handler {
+>>>>>>>> 21b71bc (start again):old/v3/internal/http/sse.go
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("X-SSE-Token")
-		ch, ok := t[token]
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
+		if ch := t.getChannel(token); ch != nil {
+			r = r.WithContext(context.WithValue(r.Context(), sessionKey, ch))
+			h.ServeHTTP(w, r)
 			return
 		}
 
-		r = r.WithContext(context.WithValue(r.Context(), sessionKey, ch))
-		h.ServeHTTP(w, r)
+		w.WriteHeader(http.StatusUnauthorized)
 	})
 }
 

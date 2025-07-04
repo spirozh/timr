@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"context"
@@ -11,16 +11,33 @@ import (
 	"time"
 )
 
-func Serve(ctx context.Context, cancel func(), shutdownTimeout time.Duration, addr string, h http.Handler) error {
+type server struct {
+	ctx             context.Context
+	cancel          func()
+	addr            string
+	h               http.Handler
+	shutdownTimeout time.Duration
+}
+
+func Server(ctx context.Context) server {
+	ctx, done := context.WithCancel(ctx)
+
+	return server{
+		ctx:    ctx,
+		cancel: done,
+	}
+}
+
+func (s *server) Serve() error {
 	srv := &http.Server{
-		Addr:        addr,
-		Handler:     h,
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
+		Addr:        s.addr,
+		Handler:     s.h,
+		BaseContext: func(_ net.Listener) context.Context { return s.ctx },
 	}
 	closingErrChan := make(chan error)
-	go listenAndServe(srv, cancel, closingErrChan)
+	go listenAndServe(srv, s.cancel, closingErrChan)
 
-	return errors.Join(waitForShutdown(ctx, cancel, srv, shutdownTimeout), <-closingErrChan)
+	return errors.Join(waitForShutdown(s.ctx, s.cancel, srv, s.shutdownTimeout), <-closingErrChan)
 }
 
 func listenAndServe(srv *http.Server, cancel func(), errChan chan<- error) {

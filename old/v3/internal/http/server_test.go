@@ -1,20 +1,21 @@
-package server_test
+package http
 
 import (
 	"context"
 	"errors"
 	"net"
 	"net/http"
-	"spirozh/timr/internal/server"
 	"syscall"
 	"testing"
 	"time"
 )
 
 func TestBadConfig(t *testing.T) {
-	ctx, done := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 
-	err := server.Serve(ctx, done, 0, "xxx", nil)
+	s := Server(ctx)
+
+	err := s.Serve()
 
 	netAddrError := &net.AddrError{}
 	if !errors.As(err, &netAddrError) {
@@ -24,12 +25,12 @@ func TestBadConfig(t *testing.T) {
 
 func TestServeCancel(t *testing.T) {
 	errCh := make(chan error)
-	shutdownTime := time.Millisecond
-	responseTime := 10 * time.Millisecond
+	//	shutdownTime := time.Millisecond
+	//	responseTime := 10 * time.Millisecond
 
 	srv := func(ctx context.Context, done func()) {
-		errCh <- server.Serve(ctx, done, shutdownTime, ":8080",
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { time.Sleep(responseTime) }))
+		s := Server(ctx)
+		errCh <- s.Serve()
 	}
 
 	t.Run("call cancel function", func(t *testing.T) {
@@ -56,7 +57,6 @@ func TestServeCancel(t *testing.T) {
 
 	t.Run("raise interrupt while busy", func(t *testing.T) {
 		ctx, done := context.WithCancel(context.Background())
-		shutdownTime = time.Millisecond
 		go srv(ctx, done)
 
 		// wait for server to start and then make a request
