@@ -4,17 +4,15 @@ on:
     branches:
       - main
 jobs:
+  env:
+    SERVER_PORT: 8080
   http_server_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Start Server
-        run: |
-          go run spirozh/timr/cmd/server &
-      - name: Install Hurl
-        run: |
-          VERSION=6.1.1
-          sudo apt-add-repository -y ppa:lepapareil/hurl
-          sudo apt install hurl="${VERSION}"*
-      - name: Hurl tests
-        run: hurl --test test/hurl
+
+      - name: start server
+        run: make run &
+
+      - name: run tests
+        run: make test

@@ -4,4 +4,7 @@ run:
 	go run spirozh/timr/cmd/server
 
 test:
-	hurl --test test/hurl/*.hurl
+	go run spirozh/timr_test
+
+hurltest:
+	hurl --variable host=http://localhost:$server_port --test test/hurl
