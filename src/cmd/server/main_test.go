@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/spirozh/timr/internal"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -47,19 +48,9 @@ func isServerAlive(t *testing.T, alive bool) {
 
 func hasBody(t *testing.T, url string, expected string) {
 	r, err := http.Get(url)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.NoError(t, err)
 
 	b, err := io.ReadAll(r.Body)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if string(b) != expected {
-		err := errors.New("expected '" + expected + "', got: " + string(b))
-		t.Error(err)
-		return
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, expected, string(b))
 }
