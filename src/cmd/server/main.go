@@ -2,40 +2,17 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"spirozh/timr/internal"
 	"syscall"
-	"time"
+
+	"github.com/spirozh/timr/internal"
 )
 
 func main() {
-	baseCtx := context.Background()
-
-	mux := http.NewServeMux()
-	internal.AddRoutes(mux)
-
-	// Create a new server instance
-	s := &http.Server{
-		BaseContext:       func(net.Listener) context.Context { return baseCtx },
-		Addr:              ":8080",
-		Handler:           internal.LogRequest(mux),
-		ReadHeaderTimeout: 2 * time.Second,
-		ReadTimeout:       4 * time.Second,
-	}
-
-	// Start the web server in a goroutine
-	go func() {
-		fmt.Println("Server listening on port 8080")
-		if err := s.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
-		}
-	}()
+	a := internal.NewApp()
+	go a.Run()
 
 	// Set up signal handling for graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -43,12 +20,8 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(baseCtx, 5*time.Second)
-	defer cancel()
-
-	if err := s.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+	if err := a.Close(); err != nil {
+		log.Fatal("Error closing server:", err)
 	}
-
-	log.Println("Server exiting")
+	log.Println("Server closed")
 }
