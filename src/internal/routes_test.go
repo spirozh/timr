@@ -16,7 +16,7 @@ func TestRoutes(t *testing.T) {
 		path string
 		pat  string
 	}{
-		"index":  {"/", "GET /{$}"},
+		"index":  {"/", "GET /"},
 		"404":    {"/foo", ""},
 		"kill":   {"/kill", "GET /kill"},
 		"styles": {"/static/styles.css", "GET /static/"},
