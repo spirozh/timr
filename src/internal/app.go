@@ -20,7 +20,7 @@ func NewApp() App {
 	return App{
 		baseCtx:  ctx,
 		cancelFn: cancel,
-		err:      make(chan error),
+		err:      make(chan error, 1),
 	}
 }
 
@@ -28,7 +28,7 @@ func (a App) Run() {
 	ctx := a.baseCtx
 
 	mux := http.NewServeMux()
-	AddRoutes(mux)
+	a.AddRoutes(mux)
 
 	s := &http.Server{
 		BaseContext:       func(net.Listener) context.Context { return ctx },
@@ -41,9 +41,11 @@ func (a App) Run() {
 	// Start the web server
 	go func() {
 		fmt.Println("Server listening on port 8080")
-		if err := s.ListenAndServe(); err != http.ErrServerClosed {
+		err := s.ListenAndServe()
+		if err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
+		a.err <- err
 	}()
 
 	// Listen for context to be closed and then shut down

@@ -1,10 +1,10 @@
 .PHONY: run test
 
 run:
-	go run spirozh/timr/cmd/server
+	go run github.com/spirozh/timr/cmd/server
 
 test:
-	go run spirozh/timr/cmd/test
+	cd src ; go test ./...
 
 hurltest:
 	hurl --variable host=http://localhost:$server_port --test test/hurl
