@@ -4,9 +4,18 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/spirozh/timr/internal/view"
 )
 
 func (a App) AddRoutes(mux *http.ServeMux) {
+	t, err := view.NewTemplates()
+	if err != nil {
+		panic(err)
+	}
+	i := view.NewIndexView(t)
+
+	mux.HandleFunc("GET /", i.Index)
 	// Define the handler for the '/selma' route
 	mux.HandleFunc("GET /selma", selma)
 	mux.HandleFunc("GET /kill", a.kill)
