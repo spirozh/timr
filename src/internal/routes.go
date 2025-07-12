@@ -4,9 +4,20 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/spirozh/timr/internal/view"
 )
 
 func (a App) AddRoutes(mux *http.ServeMux) {
+	t, err := view.NewTemplates()
+	if err != nil {
+		panic(err)
+	}
+	i := view.NewIndexView(t)
+	mux.HandleFunc("GET /{$}", i.Index)
+
+	mux.Handle("GET /static/", view.StaticHandler())
+
 	// Define the handler for the '/selma' route
 	mux.HandleFunc("GET /selma", selma)
 	mux.HandleFunc("GET /kill", a.kill)
@@ -24,5 +35,7 @@ func (a App) kill(w http.ResponseWriter, _ *http.Request) {
 	if err != nil {
 		slog.Error("Error writing response", "error", err)
 	}
-	a.Close()
+	if err := a.Close(); err != nil {
+		slog.Error("error closing app", "error", err)
+	}
 }

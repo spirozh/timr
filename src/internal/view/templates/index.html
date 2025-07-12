@@ -1,0 +1,34 @@
+{{define "index"}}
+<html>
+<head>
+    <title>timr</title>
+    <meta charset="UTF-8"/>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
+    <script src="/static/timr.js"></script>
+    <link rel=icon type="img/png" sizes="32x32" href="/static/favicon-32x32.ico"/>
+    <link rel=icon type="img/png" sizes="16x16" href="/static/favicon-16x16.ico"/>
+    <link rel=icon href="/static/favicon.ico"/>
+    <link rel=stylesheet href="/static/styles.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body hx-boost="true">
+<section>
+    <h1>Timrs</h1>
+    {{ .Foo }}
+    <label>Search <input type="search"
+                         name="search" placeholder="Begin Typing To Search"
+                         hx-get="/timrs"
+                         hx-trigger="keyup changed delay:500ms, search"
+                         hx-target="#timrs"
+                         hx-replace="innerHTML"
+        ></label>
+
+    <form method="post" action="/timrs">
+        <label>Description <input type="text" minlength="3" name="description" autofocus required/></label>
+    </form>
+</section>
+</body>
+</html>
+{{end}}
